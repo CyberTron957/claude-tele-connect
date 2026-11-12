@@ -29,6 +29,13 @@ def _get(name: str, default: str = "") -> str:
     return os.environ.get(f"CLAUDE_TELE_CONNECT_{name}", default)
 
 
+# ---- Voice provider: "gemini" (default; free tier with an AI Studio key) or "openai" ----
+# Empty = Gemini if it's configured, else OpenAI if an OpenAI key is set.
+PROVIDER = _get("PROVIDER").lower()
+# Model and voice for the chosen provider. Empty = the provider's default (see voice.PROVIDERS).
+MODEL = _get("MODEL")
+VOICE = _get("VOICE")
+
 # ---- Gemini: either an API key (Google AI Studio, simplest) or a Google Cloud project (Vertex AI) ----
 GEMINI_API_KEY = _get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "")
 GCP_PROJECT = _get("GCP_PROJECT") or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
@@ -36,8 +43,12 @@ GCP_LOCATION = _get("GCP_LOCATION", "us-central1")
 # Vertex only: a short-lived OAuth access token instead of Application Default Credentials, for borrowed or
 # shared computers where you don't want to leave a long-lived login (expires after about an hour).
 ACCESS_TOKEN = _get("ACCESS_TOKEN")
-MODEL = _get("MODEL", "gemini-3.8-live")
-VOICE = _get("VOICE", "Kore")
+
+# ---- OpenAI Realtime ----
+OPENAI_API_KEY = _get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+# Another endpoint with the same protocol (e.g. Azure OpenAI) can go here.
+OPENAI_URL = _get("OPENAI_URL", "wss://api.openai.com/v1/realtime")
+OPENAI_TRANSCRIBE_MODEL = _get("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
 
 # ---- You ----
 # The name the AI uses when it says whose behalf it calls on.

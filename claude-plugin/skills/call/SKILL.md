@@ -1,24 +1,25 @@
 ---
 name: call
-description: Place a real phone call from the user's own Android phone and number, with an AI voice (Gemini Live) that talks to the other person to reach a goal, then report what happened. Use when the user asks you to call someone or a business (book or change an appointment, ask a question, check opening hours, pass on a message, navigate a phone menu). Requires the claude-tele-connect command-line tool and an Android phone connected over adb.
+description: Place a real phone call from the user's own Android phone and number, with an AI voice (Gemini Live or OpenAI Realtime) that talks to the other person to reach a goal, then report what happened. Use when the user asks you to call someone or a business (book or change an appointment, ask a question, check opening hours, pass on a message, navigate a phone menu). Requires the claude-tele-connect command-line tool and an Android phone connected over adb.
 ---
 
 # Phone calls with claude-tele-connect
 
-`claude-tele-connect` dials from the user's own Android phone over adb. A Gemini Live voice agent talks on the
+`claude-tele-connect` dials from the user's own Android phone over adb. An AI voice agent talks on the
 call; you give it the goal and the facts it needs, wait for the call to finish, then read the result.
-The voice agent always says it is an AI assistant calling on the user's behalf.
+The voice agent (Gemini Live or OpenAI Realtime, whichever the user set up) always says it is an AI
+assistant calling on the user's behalf.
 
 ## 1. Make sure the tool works
 
 Run `claude-tele-connect --version`. If the command is missing, use the **setup** skill to install and
 configure it (it also covers adb and connecting the phone), then come back here.
 
-On first use, or after any error about the phone or Gemini, run `claude-tele-connect check`. It reports whether the
-phone is connected, whether Gemini is configured, and which audio mode the phone needs. If it says
+On first use, or after any error about the phone or the AI voice, run `claude-tele-connect check`. It reports whether the
+phone is connected, whether the AI voice is configured, and which audio mode the phone needs. If it says
 "Fix the items above", relay those items to the user in plain words; most need the user to act on the
 phone (turn on wireless debugging, pair, plug in USB) or to run `claude-tele-connect setup` in their own terminal,
-which asks for a Gemini API key. Never ask the user to paste an API key into the chat.
+which asks for the voice provider and its API key. Never ask the user to paste an API key into the chat.
 
 ## 2. Confirm the exact call with the user (required, every call)
 
@@ -81,6 +82,6 @@ booked or agreed unless the transcript shows the other person clearly confirmed 
 | Message | What to do |
 |---|---|
 | "No authorized phone found over adb" | Phone not reachable. Ask the user to check Wireless debugging is on (or plug in USB), then retry. Wireless debugging turns itself off when the phone changes Wi-Fi. |
-| "Gemini isn't configured" / "your name isn't set" | The user runs `claude-tele-connect setup` in their terminal. |
+| "Gemini isn't configured" / "OpenAI isn't configured" / "your name isn't set" | The user runs `claude-tele-connect setup` in their terminal. |
 | "phone is already in a call" | Wait until the user's current call ends. |
 | `ended_by` is "phone audio never became ready" | Run `claude-tele-connect check`; the phone may need Bluetooth audio mode. |

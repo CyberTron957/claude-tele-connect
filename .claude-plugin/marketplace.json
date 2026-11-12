@@ -8,7 +8,7 @@
     {
       "name": "tele-connect",
       "source": "./claude-plugin",
-      "description": "Make real phone calls from your own Android phone and number, with a Gemini Live voice agent"
+      "description": "Make real phone calls from your own Android phone and number, with a Gemini Live (free) or OpenAI Realtime voice agent"
     }
   ]
 }

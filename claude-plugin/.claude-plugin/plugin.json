@@ -1,7 +1,7 @@
 {
   "name": "tele-connect",
   "version": "0.1.0",
-  "description": "Make real phone calls from your own Android phone and number, with a Gemini Live voice agent. Needs the claude-tele-connect command-line tool.",
+  "description": "Make real phone calls from your own Android phone and number, with a Gemini Live (free) or OpenAI Realtime voice agent. Needs the claude-tele-connect command-line tool.",
   "license": "MIT",
   "keywords": ["phone", "calls", "android", "voice"]
 }

@@ -1,11 +1,12 @@
-"""claude-tele-connect: let an AI agent make phone calls from your own Android phone, with Gemini Live as the voice.
+"""claude-tele-connect: let an AI agent make phone calls from your own Android phone, with Gemini Live or
+OpenAI Realtime as the voice.
 
-  claude-tele-connect setup                          save your Gemini key and name (once)
-  claude-tele-connect check                          check phone + Gemini, and which audio mode your phone needs
+  claude-tele-connect setup                          choose the AI voice, save its key and your name (once)
+  claude-tele-connect check                          check phone + voice, and which audio mode your phone needs
   claude-tele-connect lookup <name>                  find a contact's number on the phone
   claude-tele-connect call <number-or-contact> --goal "what the call should achieve" [--context "..."]
 
-The phone dials over adb. Once answered, call audio reaches Gemini Live through the phone's call-audio
+The phone dials over adb. Once answered, call audio reaches the AI voice through the phone's call-audio
 interception API (audio mode "phone") or over Bluetooth with this computer as the phone's hands-free
 device (audio mode "bluetooth", Windows/Linux). Transcripts are saved in ~/.claude-tele-connect/calls/.
 """
@@ -19,26 +20,50 @@ import os
 import platform
 import sys
 
-from . import __version__, config, phone
+from . import __version__, config, phone, voice
 
 
 # ---------------------------------------------------------------- setup
 
+FREE_TIER_NOTE = ("Gemini's free tier costs nothing (with rate limits). On the free tier Google may use what is said "
+                  "on calls to improve its products; enable billing on the key if that isn't acceptable.")
+
+
 def setup(a) -> int:
     values = {}
     interactive = sys.stdin.isatty()
-    key = a.api_key
-    if key is None and interactive:
-        print("Gemini access. Easiest: an API key from https://aistudio.google.com/apikey")
-        print("(Leave empty to use a Google Cloud project with Vertex AI instead.)")
-        key = getpass.getpass("Gemini API key (hidden): ").strip()
-    if key:
-        values["CLAUDE_TELE_CONNECT_GEMINI_API_KEY"] = key
-    project = a.gcp_project
-    if not key and project is None and interactive:
-        project = input("Google Cloud project ID (Vertex AI, uses `gcloud auth application-default login`): ").strip()
-    if project:
-        values["CLAUDE_TELE_CONNECT_GCP_PROJECT"] = project
+    provider = a.provider
+    if provider is None and interactive and not (a.api_key or a.gcp_project or a.openai_api_key):
+        print("Which AI voice should talk on your calls?")
+        print("  1) Gemini Live (Google)  - free: just needs a free API key from aistudio.google.com/apikey")
+        print("  2) OpenAI Realtime       - paid: needs an OpenAI API key with billing")
+        provider = {"2": "openai", "openai": "openai"}.get(input("Choose 1 or 2 [1]: ").strip().lower(), "gemini")
+    provider = provider or ("openai" if a.openai_api_key else "gemini")
+    values["CLAUDE_TELE_CONNECT_PROVIDER"] = provider
+
+    if provider == "openai":
+        key = a.openai_api_key
+        if key is None and interactive:
+            print("OpenAI API key from https://platform.openai.com/api-keys")
+            key = getpass.getpass("OpenAI API key (hidden): ").strip()
+        if key:
+            values["CLAUDE_TELE_CONNECT_OPENAI_API_KEY"] = key
+        elif not config.OPENAI_API_KEY:
+            print("No OpenAI key given; calls won't work until you add one (run setup again).")
+    else:
+        key = a.api_key
+        if key is None and a.gcp_project is None and interactive:
+            print("Gemini access. Easiest: a free API key from https://aistudio.google.com/apikey")
+            print("(Leave empty to use a Google Cloud project with Vertex AI instead.)")
+            key = getpass.getpass("Gemini API key (hidden): ").strip()
+        if key:
+            values["CLAUDE_TELE_CONNECT_GEMINI_API_KEY"] = key
+            print(FREE_TIER_NOTE)
+        project = a.gcp_project
+        if not key and project is None and interactive:
+            project = input("Google Cloud project ID (Vertex AI, uses `gcloud auth application-default login`): ").strip()
+        if project:
+            values["CLAUDE_TELE_CONNECT_GCP_PROJECT"] = project
     owner = a.owner
     if owner is None and interactive:
         owner = input("Your name (the AI says it's calling on behalf of this name): ").strip()
@@ -49,8 +74,8 @@ def setup(a) -> int:
         cc = input("Country code for numbers saved without one, e.g. 91 or 1 (optional): ").strip()
     if cc:
         values["CLAUDE_TELE_CONNECT_COUNTRY_CODE"] = cc.lstrip("+")
-    if not values:
-        print("Nothing to save. Run in a terminal, or pass --api-key / --gcp-project / --owner.")
+    if len(values) == 1 and not interactive and a.provider is None:
+        print("Nothing to save. Run in a terminal, or pass --api-key / --openai-api-key / --gcp-project / --owner.")
         return 1
 
     config.HOME.mkdir(parents=True, exist_ok=True)
@@ -78,22 +103,34 @@ def check(a) -> int:
     bt_name = phone.bluetooth_name()
     print(f"  Bluetooth name: {bt_name or 'unknown'}")
 
-    print("Gemini")
-    backend = config.gemini_backend()
-    if backend == "api_key":
-        print(f"  API key set (model {config.MODEL})")
-    elif backend == "vertex" and config.ACCESS_TOKEN:
-        print(f"  Vertex project {config.GCP_PROJECT}, using CLAUDE_TELE_CONNECT_ACCESS_TOKEN (expires about an hour after it was made)")
-    elif backend == "vertex":
-        try:
-            import google.auth
-            google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
-            print(f"  Vertex project {config.GCP_PROJECT}, credentials found")
-        except Exception as e:
-            print(f"  no Google credentials ({e.__class__.__name__}); run: gcloud auth application-default login")
+    provider = a.provider or voice.default_provider()
+    default_model, default_voice, _ = voice.PROVIDERS.get(provider, ("?", "?", ""))
+    print(f"AI voice: {provider} (model {config.MODEL or default_model}, voice {config.VOICE or default_voice})")
+    if provider == "openai":
+        if config.OPENAI_API_KEY:
+            print(f"  OpenAI API key set (paid per minute of audio){'; endpoint ' + config.OPENAI_URL if 'api.openai.com' not in config.OPENAI_URL else ''}")
+        else:
+            print("  no OpenAI API key: run `claude-tele-connect setup --provider openai`")
+            ok = False
+    elif provider == "gemini":
+        backend = config.gemini_backend()
+        if backend == "api_key":
+            print("  Gemini API key set. Free tier: no cost, with rate limits (paid tier if billing is on for the key)")
+        elif backend == "vertex" and config.ACCESS_TOKEN:
+            print(f"  Vertex project {config.GCP_PROJECT}, using CLAUDE_TELE_CONNECT_ACCESS_TOKEN (expires about an hour after it was made)")
+        elif backend == "vertex":
+            try:
+                import google.auth
+                google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+                print(f"  Vertex project {config.GCP_PROJECT}, credentials found")
+            except Exception as e:
+                print(f"  no Google credentials ({e.__class__.__name__}); run: gcloud auth application-default login")
+                ok = False
+        else:
+            print("  not configured: run `claude-tele-connect setup` (a free Gemini API key is easiest)")
             ok = False
     else:
-        print("  not configured: run `claude-tele-connect setup` (a Gemini API key is easiest)")
+        print(f"  {voice.configured(provider)}")
         ok = False
     if not config.OWNER_NAME:
         print("  your name is not set: run `claude-tele-connect setup` (the AI says it calls on behalf of this name)")
@@ -151,7 +188,9 @@ async def outbound(a) -> dict:
     print(f"Goal:    {a.goal}")
     if a.context:
         print(f"Context: {a.context}")
-    print(f"Voice:   {a.voice} via {a.model} | audio={a.audio} | max {a.max_minutes} min | record={a.record}")
+    provider = a.provider or voice.default_provider()
+    default_model, default_voice, _ = voice.PROVIDERS[provider]
+    print(f"Voice:   {provider} {a.model or default_model} ({a.voice or default_voice}) | audio={a.audio} | max {a.max_minutes} min | record={a.record}")
     if not a.yes:
         if not sys.stdin.isatty():
             raise phone.PhoneError("Not placing the call: no terminal to confirm in. Pass --yes once the user "
@@ -163,10 +202,10 @@ async def outbound(a) -> dict:
         raise phone.PhoneError("The phone is already in a call; not dialing.")
 
     s = agent.CallSession(label, number, a.goal, a.context, direction="outbound", owner=a.owner,
-                          voice=a.voice, model=a.model, max_minutes=a.max_minutes, record=a.record,
+                          provider=provider, voice_name=a.voice, model=a.model, max_minutes=a.max_minutes, record=a.record,
                           mute_mic=a.mute_mic, audio=a.audio, bt_device=a.bt_device)
     try:
-        print(f"Preparing (Gemini + {a.audio} audio bridge) before dialing...")
+        print(f"Preparing ({provider} voice + {a.audio} audio bridge) before dialing...")
         await s.prepare()
         await phone.dial(number)
         print("Dialing...")
@@ -175,7 +214,7 @@ async def outbound(a) -> dict:
             print("Not answered.")
             s.result["ended_by"] = "not answered"
         else:
-            print("Answered — Gemini is on the line. Transcript:")
+            print("Answered — the AI is on the line. Transcript:")
             await s.converse()
     finally:
         result = await s.close()
@@ -184,8 +223,9 @@ async def outbound(a) -> dict:
 
 
 def call(a, parser) -> int:
-    if not config.gemini_backend():
-        parser.error("Gemini isn't configured: run `claude-tele-connect setup`")
+    missing = voice.configured(a.provider or voice.default_provider())
+    if missing:
+        parser.error(missing)
     if not a.owner:
         parser.error("your name isn't set: run `claude-tele-connect setup` or pass --owner")
     # In --json mode, progress goes to stderr and stdout carries only the final JSON.
@@ -213,13 +253,17 @@ def main(argv=None) -> int:
     p.add_argument("--version", action="version", version=f"claude-tele-connect {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    s = sub.add_parser("setup", help="save your Gemini key and name")
+    s = sub.add_parser("setup", help="choose the AI voice, save its key and your name")
+    s.add_argument("--provider", choices=tuple(voice.PROVIDERS), help="AI voice provider (default: ask; gemini is free)")
     s.add_argument("--api-key", help="Gemini API key from Google AI Studio")
+    s.add_argument("--openai-api-key", help="OpenAI API key")
     s.add_argument("--gcp-project", help="Google Cloud project (Vertex AI) instead of an API key")
     s.add_argument("--owner", help="your name, as the AI should say it")
     s.add_argument("--country-code", help="country code for numbers saved without one, e.g. 91")
 
     def audio_args(sp):
+        sp.add_argument("--provider", choices=tuple(voice.PROVIDERS), default=None,
+                        help="AI voice: gemini or openai (default from CLAUDE_TELE_CONNECT_PROVIDER, else gemini)")
         sp.add_argument("--audio", choices=("phone", "bluetooth"), default=config.AUDIO,
                         help="how call audio reaches the computer (default from CLAUDE_TELE_CONNECT_AUDIO, else phone)")
         sp.add_argument("--bt-device", default=config.BT_DEVICE,
@@ -237,8 +281,8 @@ def main(argv=None) -> int:
     k.add_argument("--goal", required=True, help="what the call should achieve")
     k.add_argument("--context", default="", help="extra facts the AI may use (it knows nothing else about you)")
     k.add_argument("--owner", default=config.OWNER_NAME, help="whose behalf the AI calls on")
-    k.add_argument("--voice", default=config.VOICE)
-    k.add_argument("--model", default=config.MODEL)
+    k.add_argument("--voice", default=config.VOICE, help="voice name (default: Kore for gemini, marin for openai)")
+    k.add_argument("--model", default=config.MODEL, help="model (default: gemini-3.8-live / gpt-realtime-2.1)")
     audio_args(k)
     k.add_argument("--max-minutes", type=float, default=5)
     k.add_argument("--ring-timeout", type=float, default=45)

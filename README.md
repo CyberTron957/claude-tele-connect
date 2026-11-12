@@ -1,8 +1,8 @@
 # claude-tele-connect
 
 Let an AI agent make phone calls from **your own Android phone and SIM**. The phone dials over adb, the
-call audio reaches your computer, and a Gemini Live voice talks on the call. No telephony provider, no
-new number: people see your normal number.
+call audio reaches your computer, and an AI voice (Gemini Live, free tier available, or OpenAI Realtime)
+talks on the call. No telephony provider, no new number: people see your normal number.
 
 ```
 claude-tele-connect call "Dr Mehta Clinic" --goal "Book a check-up for next Tuesday afternoon" --context "Name: Sam Lee"
@@ -19,8 +19,23 @@ haircut to Saturday"*. Claude confirms the call with you, places it, and tells y
   play the AI's voice into the call.
 - On phones that don't allow that, the computer pairs with the phone as a Bluetooth hands-free kit
   instead, like a car (Windows and Linux).
-- Gemini Live does the talking: short turns, interruptions, keypad tones for phone menus, hanging up
-  politely. Transcripts are saved on your computer.
+- A speech-to-speech AI model does the talking: short turns, interruptions, keypad tones for phone menus,
+  hanging up politely. Transcripts are saved on your computer.
+
+## Voice providers
+
+| Provider | Cost | Default model / voice | What you need |
+|---|---|---|---|
+| `gemini` (default) | **Free** on the Gemini API free tier (rate-limited); paid per minute if billing is on | `gemini-3.8-live` / Kore | Free API key from [Google AI Studio](https://aistudio.google.com/apikey), or a Vertex AI project |
+| `openai` | Paid per minute of audio | `gpt-realtime-2.1` / marin | [OpenAI API key](https://platform.openai.com/api-keys) with billing |
+
+`claude-tele-connect setup` asks which one to use; `--provider` overrides it per call. Other endpoints
+that speak the OpenAI Realtime protocol (for example Azure OpenAI) work through
+`CLAUDE_TELE_CONNECT_OPENAI_URL`.
+
+**Free tier and privacy:** on Gemini's free tier, Google may use what is said on your calls (including the
+other person's words) to improve its products. If that isn't acceptable, enable billing on the key
+(paid tier) or use Vertex AI or OpenAI. The free tier's limits are shown in AI Studio for your key.
 
 | Your phone | Audio mode | Computer |
 |---|---|---|
@@ -28,7 +43,8 @@ haircut to Saturday"*. Claude confirms the call with you, places it, and tells y
 | Fails the check | `bluetooth`: adb for control, Bluetooth for audio | Windows, Linux |
 
 > **Status: early.** Tested so far: `phone` mode with a Samsung Galaxy M14 5G (Android 15) from macOS and
-> Windows 11, over USB and wireless adb, in English and Telugu. `bluetooth` mode is implemented and its
+> Windows 11, over USB and wireless adb, in English and Telugu, with Gemini Live. The `openai` provider is
+> tested against a simulated server only, not yet on a real call. `bluetooth` mode is implemented and its
 > audio code is tested, but it hasn't been used with a real phone yet. Reports from other phones are very
 > welcome; run `claude-tele-connect check` and open an issue with the output.
 
@@ -36,8 +52,8 @@ haircut to Saturday"*. Claude confirms the call with you, places it, and tells y
 
 - An **Android 13+ phone** with a SIM that makes normal calls.
 - A computer with **Python 3.10+** and **adb** (Android platform-tools).
-- **Gemini access**: a free API key from [Google AI Studio](https://aistudio.google.com/apikey), or a Google
-  Cloud project with Vertex AI.
+- **An AI voice**: a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) (or a
+  Vertex AI project), or an OpenAI API key. See [Voice providers](#voice-providers).
 
 Install adb: macOS `brew install android-platform-tools`; Ubuntu/Debian `sudo apt install adb`; Windows:
 download *SDK Platform-Tools* from developer.android.com, unzip, and add the folder to `PATH`.
@@ -52,14 +68,14 @@ pipx install git+https://github.com/CyberTron957/claude-tele-connect
 
 ## Set up
 
-### 1. Gemini key and your name
+### 1. AI voice and your name
 
 ```
 claude-tele-connect setup
 ```
 
-This asks for your Gemini API key (hidden input), the name the AI should say it's calling for, and your
-country code, and saves them in `~/.claude-tele-connect/.env`.
+This asks which voice provider to use (Gemini is free), its API key (hidden input), the name the AI should
+say it's calling for, and your country code, and saves them in `~/.claude-tele-connect/.env`.
 
 ### 2. Turn on developer options (phone)
 
@@ -93,7 +109,7 @@ the most reliable.
 claude-tele-connect check
 ```
 
-It copies the phone program to the phone, checks Gemini, and tells you which audio mode your phone
+It copies the phone program to the phone, checks the AI voice settings, and tells you which audio mode your phone
 needs. "call audio interception: supported" means you're done.
 
 ### 5. First call
@@ -134,7 +150,8 @@ claude-tele-connect setup
 | `--context "..."` | Facts the AI may share (booking name, order number, limits). It knows nothing else about you. |
 | `--max-minutes N` | Hard limit with a polite wrap-up (default 5) |
 | `--ring-timeout N` | Seconds to wait for an answer (default 45) |
-| `--voice`, `--model` | Gemini voice (default Kore) and model |
+| `--provider gemini\|openai` | Which AI voice to use (default from setup) |
+| `--voice`, `--model` | Voice and model (defaults: Kore / `gemini-3.8-live`, marin / `gpt-realtime-2.1`) |
 | `--audio phone\|bluetooth` | How call audio reaches the computer |
 | `--record` | Also save both sides as WAV files |
 | `--yes` | Skip the confirmation prompt |
@@ -144,15 +161,19 @@ Settings (in `~/.claude-tele-connect/.env`, a `.env` in the current folder, or e
 
 | Setting | Meaning |
 |---|---|
+| `CLAUDE_TELE_CONNECT_PROVIDER` | `gemini` or `openai` |
 | `CLAUDE_TELE_CONNECT_GEMINI_API_KEY` | Gemini API key (also read from `GEMINI_API_KEY`) |
 | `CLAUDE_TELE_CONNECT_GCP_PROJECT` | Use Vertex AI in this Google Cloud project instead (with `gcloud auth application-default login`) |
+| `CLAUDE_TELE_CONNECT_OPENAI_API_KEY` | OpenAI API key (also read from `OPENAI_API_KEY`) |
+| `CLAUDE_TELE_CONNECT_OPENAI_URL` | Realtime endpoint (default `wss://api.openai.com/v1/realtime`) |
+| `CLAUDE_TELE_CONNECT_OPENAI_TRANSCRIBE_MODEL` | Model that transcribes the other person (default `gpt-4o-mini-transcribe`) |
 | `CLAUDE_TELE_CONNECT_OWNER` | Your name, as the AI says it |
 | `CLAUDE_TELE_CONNECT_OWNER_PRONOUNS` | Optional. Without it, the AI refers to you by name only |
 | `CLAUDE_TELE_CONNECT_COUNTRY_CODE` | Country code added to 10-digit numbers saved without one |
 | `CLAUDE_TELE_CONNECT_ADB_DEVICE` | Pin a phone (serial or ip:port) when several are connected, or when Wi-Fi discovery is blocked |
 | `CLAUDE_TELE_CONNECT_AUDIO` | `phone` (default) or `bluetooth` |
 | `CLAUDE_TELE_CONNECT_BT_DEVICE` | Bluetooth mode: part of the audio device name, if it isn't found automatically |
-| `CLAUDE_TELE_CONNECT_MODEL`, `CLAUDE_TELE_CONNECT_VOICE` | Gemini model (default `gemini-3.8-live`) and voice |
+| `CLAUDE_TELE_CONNECT_MODEL`, `CLAUDE_TELE_CONNECT_VOICE` | Model and voice for the chosen provider |
 | `CLAUDE_TELE_CONNECT_CALLS_DIR` | Where transcripts go (default `~/.claude-tele-connect/calls`) |
 
 ## Bluetooth mode
@@ -207,6 +228,7 @@ settings when you're not using it.
 git clone https://github.com/CyberTron957/claude-tele-connect && cd claude-tele-connect
 pip install -e .
 python tests/test_bluetooth.py        # resampler and Bluetooth bridge logic, no hardware
+python tests/test_voice.py            # voice providers (fake OpenAI server) and a simulated call
 tests/linux_audio_test.sh             # Linux Bluetooth audio path in Docker, with virtual devices
 ```
 

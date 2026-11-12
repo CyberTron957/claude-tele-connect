@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "claude-tele-connect"
 version = "0.1.0"
-description = "Let an AI agent make phone calls from your own Android phone and number, with Gemini Live as the voice"
+description = "Let an AI agent make phone calls from your own Android phone and number, with Gemini Live (free tier) or OpenAI Realtime as the voice"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -13,8 +13,9 @@ dependencies = [
     "google-genai>=1.65",
     "google-auth>=2.30",
     "numpy>=1.24",
+    "websockets>=14",
 ]
-keywords = ["phone", "calls", "android", "adb", "gemini", "voice agent", "claude"]
+keywords = ["phone", "calls", "android", "adb", "gemini", "openai", "realtime", "voice agent", "claude"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",

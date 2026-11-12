@@ -42,9 +42,9 @@ Run `adb version`. If it is missing:
 - Debian/Ubuntu: `sudo apt install adb` (ask before using sudo)
 - Windows: `winget install --id=Google.PlatformTools -e`; if that fails, same download link as above
 
-## 3. Gemini key and the user's name
+## 3. AI voice, its key, and the user's name
 
-Run `claude-tele-connect check`. If it says Gemini or the owner name is not set, tell the user to run
+Run `claude-tele-connect check`. If the AI voice or the owner name is not set, tell the user to run
 this themselves in their terminal (in Claude Code, typing `! claude-tele-connect setup`
 runs it in this session):
 
@@ -52,9 +52,15 @@ runs it in this session):
 claude-tele-connect setup
 ```
 
-It asks for a Gemini API key with hidden input, the name the AI should say it calls for, and the country
-code. A free key comes from https://aistudio.google.com/apikey. Do not run `setup` yourself: it needs the
-user's typing, and the key must not pass through the chat.
+It asks which voice provider to use, that provider's API key (hidden input), the name the AI should say it
+calls for, and the country code. Explain the choice briefly if the user asks:
+
+- **Gemini** (default): free. A free key from https://aistudio.google.com/apikey is enough; the free
+  tier has rate limits, and Google may use what is said on free-tier calls to improve its products
+  (enabling billing on the key avoids that).
+- **OpenAI Realtime**: paid per minute; needs an OpenAI API key with billing.
+
+Do not run `setup` yourself: it needs the user's typing, and the key must not pass through the chat.
 
 ## 4. Connect the phone
 
