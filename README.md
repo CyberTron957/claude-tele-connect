@@ -111,7 +111,9 @@ claude-tele-connect call "<contact name or number>" --goal "Say hello, explain t
 /plugin install tele-connect@claude-tele-connect
 ```
 
-Then ask Claude to make a call. The plugin's skill makes Claude look up the contact, show you the
+Then say **"set up phone calling"**: the plugin's setup skill installs the tool and adb, connects the
+phone, runs the check and does a test call, leaving only the phone taps and your API key to you. After
+that, ask Claude to make a call. The plugin's skill makes Claude look up the contact, show you the
 number, goal and details, and wait for your OK before every call. After the call it reads the transcript
 and tells you the outcome. (You can also copy `claude-plugin/skills/call/` into `~/.claude/skills/`.)
 

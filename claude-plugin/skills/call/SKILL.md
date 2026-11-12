@@ -11,8 +11,8 @@ The voice agent always says it is an AI assistant calling on the user's behalf.
 
 ## 1. Make sure the tool works
 
-Run `claude-tele-connect --version`. If the command is missing, tell the user to install it
-(`pipx install git+https://github.com/CyberTron957/claude-tele-connect`, see the project README) and stop.
+Run `claude-tele-connect --version`. If the command is missing, use the **setup** skill to install and
+configure it (it also covers adb and connecting the phone), then come back here.
 
 On first use, or after any error about the phone or Gemini, run `claude-tele-connect check`. It reports whether the
 phone is connected, whether Gemini is configured, and which audio mode the phone needs. If it says
