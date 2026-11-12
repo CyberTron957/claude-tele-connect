@@ -1,12 +1,12 @@
 {
-  "name": "ai-phone",
-  "description": "The ai-phone plugin: AI phone calls from your own Android phone",
+  "name": "claude-tele-connect",
+  "description": "The claude-tele-connect plugin: AI phone calls from your own Android phone",
   "owner": {
-    "name": "ai-phone contributors"
+    "name": "claude-tele-connect contributors"
   },
   "plugins": [
     {
-      "name": "ai-phone",
+      "name": "tele-connect",
       "source": "./claude-plugin",
       "description": "Make real phone calls from your own Android phone and number, with a Gemini Live voice agent"
     }

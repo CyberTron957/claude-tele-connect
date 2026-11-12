@@ -1,13 +1,13 @@
-"""ai-phone: let an AI agent make phone calls from your own Android phone, with Gemini Live as the voice.
+"""claude-tele-connect: let an AI agent make phone calls from your own Android phone, with Gemini Live as the voice.
 
-  ai-phone setup                          save your Gemini key and name (once)
-  ai-phone check                          check phone + Gemini, and which audio mode your phone needs
-  ai-phone lookup <name>                  find a contact's number on the phone
-  ai-phone call <number-or-contact> --goal "what the call should achieve" [--context "..."]
+  claude-tele-connect setup                          save your Gemini key and name (once)
+  claude-tele-connect check                          check phone + Gemini, and which audio mode your phone needs
+  claude-tele-connect lookup <name>                  find a contact's number on the phone
+  claude-tele-connect call <number-or-contact> --goal "what the call should achieve" [--context "..."]
 
 The phone dials over adb. Once answered, call audio reaches Gemini Live through the phone's call-audio
 interception API (audio mode "phone") or over Bluetooth with this computer as the phone's hands-free
-device (audio mode "bluetooth", Windows/Linux). Transcripts are saved in ~/.ai-phone/calls/.
+device (audio mode "bluetooth", Windows/Linux). Transcripts are saved in ~/.claude-tele-connect/calls/.
 """
 
 import argparse
@@ -33,22 +33,22 @@ def setup(a) -> int:
         print("(Leave empty to use a Google Cloud project with Vertex AI instead.)")
         key = getpass.getpass("Gemini API key (hidden): ").strip()
     if key:
-        values["AI_PHONE_GEMINI_API_KEY"] = key
+        values["CLAUDE_TELE_CONNECT_GEMINI_API_KEY"] = key
     project = a.gcp_project
     if not key and project is None and interactive:
         project = input("Google Cloud project ID (Vertex AI, uses `gcloud auth application-default login`): ").strip()
     if project:
-        values["AI_PHONE_GCP_PROJECT"] = project
+        values["CLAUDE_TELE_CONNECT_GCP_PROJECT"] = project
     owner = a.owner
     if owner is None and interactive:
         owner = input("Your name (the AI says it's calling on behalf of this name): ").strip()
     if owner:
-        values["AI_PHONE_OWNER"] = owner
+        values["CLAUDE_TELE_CONNECT_OWNER"] = owner
     cc = a.country_code
     if cc is None and interactive:
         cc = input("Country code for numbers saved without one, e.g. 91 or 1 (optional): ").strip()
     if cc:
-        values["AI_PHONE_COUNTRY_CODE"] = cc.lstrip("+")
+        values["CLAUDE_TELE_CONNECT_COUNTRY_CODE"] = cc.lstrip("+")
     if not values:
         print("Nothing to save. Run in a terminal, or pass --api-key / --gcp-project / --owner.")
         return 1
@@ -60,7 +60,7 @@ def setup(a) -> int:
     config.ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
     if os.name != "nt":
         config.ENV_FILE.chmod(0o600)
-    print(f"Saved {', '.join(values)} to {config.ENV_FILE}. Next: ai-phone check")
+    print(f"Saved {', '.join(values)} to {config.ENV_FILE}. Next: claude-tele-connect check")
     return 0
 
 
@@ -83,7 +83,7 @@ def check(a) -> int:
     if backend == "api_key":
         print(f"  API key set (model {config.MODEL})")
     elif backend == "vertex" and config.ACCESS_TOKEN:
-        print(f"  Vertex project {config.GCP_PROJECT}, using AI_PHONE_ACCESS_TOKEN (expires about an hour after it was made)")
+        print(f"  Vertex project {config.GCP_PROJECT}, using CLAUDE_TELE_CONNECT_ACCESS_TOKEN (expires about an hour after it was made)")
     elif backend == "vertex":
         try:
             import google.auth
@@ -93,10 +93,10 @@ def check(a) -> int:
             print(f"  no Google credentials ({e.__class__.__name__}); run: gcloud auth application-default login")
             ok = False
     else:
-        print("  not configured: run `ai-phone setup` (a Gemini API key is easiest)")
+        print("  not configured: run `claude-tele-connect setup` (a Gemini API key is easiest)")
         ok = False
     if not config.OWNER_NAME:
-        print("  your name is not set: run `ai-phone setup` (the AI says it calls on behalf of this name)")
+        print("  your name is not set: run `claude-tele-connect setup` (the AI says it calls on behalf of this name)")
         ok = False
 
     print("Audio")
@@ -108,7 +108,7 @@ def check(a) -> int:
               " (macOS can't be a hands-free device for a phone).")
         ok = False
     else:
-        print(f"  This phone needs Bluetooth mode: add AI_PHONE_AUDIO=bluetooth to {config.ENV_FILE}")
+        print(f"  This phone needs Bluetooth mode: add CLAUDE_TELE_CONNECT_AUDIO=bluetooth to {config.ENV_FILE}")
     if (a.audio == "bluetooth" or not info["interceptable"]) and system != "Darwin":
         from . import bluetooth
         try:
@@ -116,7 +116,7 @@ def check(a) -> int:
         except phone.PhoneError as e:
             print(f"  Bluetooth hands-free device: {e}")
             ok = False
-    print("\nAll good." if ok else "\nFix the items above, then run `ai-phone check` again.")
+    print("\nAll good." if ok else "\nFix the items above, then run `claude-tele-connect check` again.")
     return 0 if ok else 1
 
 
@@ -144,7 +144,7 @@ async def outbound(a) -> dict:
     phone.push_dex()
     label, number = phone.resolve_target(a.target)
     if phone.is_emergency(number):
-        raise phone.PhoneError(f"{number} looks like an emergency number. ai-phone never calls emergency services; "
+        raise phone.PhoneError(f"{number} looks like an emergency number. claude-tele-connect never calls emergency services; "
                                "call them yourself.")
 
     print(f"Call:    {label} ({number})")
@@ -185,9 +185,9 @@ async def outbound(a) -> dict:
 
 def call(a, parser) -> int:
     if not config.gemini_backend():
-        parser.error("Gemini isn't configured: run `ai-phone setup`")
+        parser.error("Gemini isn't configured: run `claude-tele-connect setup`")
     if not a.owner:
-        parser.error("your name isn't set: run `ai-phone setup` or pass --owner")
+        parser.error("your name isn't set: run `claude-tele-connect setup` or pass --owner")
     # In --json mode, progress goes to stderr and stdout carries only the final JSON.
     with contextlib.redirect_stdout(sys.stderr) if a.json else contextlib.nullcontext():
         result = asyncio.run(outbound(a))
@@ -209,8 +209,8 @@ def main(argv=None) -> int:
         sys.stderr.reconfigure(errors="replace")
     except Exception:
         pass
-    p = argparse.ArgumentParser(prog="ai-phone", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--version", action="version", version=f"ai-phone {__version__}")
+    p = argparse.ArgumentParser(prog="claude-tele-connect", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--version", action="version", version=f"claude-tele-connect {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("setup", help="save your Gemini key and name")
@@ -221,7 +221,7 @@ def main(argv=None) -> int:
 
     def audio_args(sp):
         sp.add_argument("--audio", choices=("phone", "bluetooth"), default=config.AUDIO,
-                        help="how call audio reaches the computer (default from AI_PHONE_AUDIO, else phone)")
+                        help="how call audio reaches the computer (default from CLAUDE_TELE_CONNECT_AUDIO, else phone)")
         sp.add_argument("--bt-device", default=config.BT_DEVICE,
                         help="bluetooth mode: part of the audio device name (default: the phone's Bluetooth name)")
 

@@ -1,13 +1,13 @@
 """Settings, read from the environment and from .env files (KEY=value lines).
 
-Files read, first match wins per key: ./.env (current folder), then ~/.ai-phone/.env.
-`ai-phone setup` writes ~/.ai-phone/.env for you.
+Files read, first match wins per key: ./.env (current folder), then ~/.claude-tele-connect/.env.
+`claude-tele-connect setup` writes ~/.claude-tele-connect/.env for you.
 """
 
 import os
 from pathlib import Path
 
-HOME = Path(os.environ.get("AI_PHONE_HOME", Path.home() / ".ai-phone"))
+HOME = Path(os.environ.get("CLAUDE_TELE_CONNECT_HOME", Path.home() / ".claude-tele-connect"))
 ENV_FILE = HOME / ".env"
 
 
@@ -26,7 +26,7 @@ _load_env(ENV_FILE)
 
 
 def _get(name: str, default: str = "") -> str:
-    return os.environ.get(f"AI_PHONE_{name}", default)
+    return os.environ.get(f"CLAUDE_TELE_CONNECT_{name}", default)
 
 
 # ---- Gemini: either an API key (Google AI Studio, simplest) or a Google Cloud project (Vertex AI) ----
@@ -55,7 +55,7 @@ COUNTRY_CODE = _get("COUNTRY_CODE")
 # How call audio reaches the computer:
 #   phone      the phone's call-audio interception API, over adb (no Bluetooth needed)
 #   bluetooth  the computer is paired as the phone's Bluetooth hands-free device (Windows/Linux only)
-# `ai-phone check` tells you which one your phone supports.
+# `claude-tele-connect check` tells you which one your phone supports.
 AUDIO = _get("AUDIO", "phone")
 # Bluetooth mode: part of the computer's audio device name for the phone (default: the phone's Bluetooth name).
 BT_DEVICE = _get("BT_DEVICE")

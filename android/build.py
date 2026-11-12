@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build android/src/CallAudio.java into src/ai_phone/callaudio.dex (runs on the phone via app_process).
+"""Build android/src/CallAudio.java into src/claude_tele_connect/callaudio.dex (runs on the phone via app_process).
 
 You only need this if you change CallAudio.java: a prebuilt callaudio.dex is included in the repo,
-and ai-phone pushes it to the phone automatically.
+and claude-tele-connect pushes it to the phone automatically.
 
 Needs JDK 17+ and the Android SDK (a platform of android-33 or newer, and build-tools with d8).
 They are found through JAVA_HOME / PATH and ANDROID_HOME / ANDROID_SDK_ROOT, or the usual install
@@ -18,7 +18,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 BUILD = HERE / "build"
-OUT = HERE.parent / "src" / "ai_phone" / "callaudio.dex"
+OUT = HERE.parent / "src" / "claude_tele_connect" / "callaudio.dex"
 WIN = os.name == "nt"
 
 
@@ -106,7 +106,7 @@ def main() -> None:
     run([d8, "--min-api", "33", "--lib", jar, "--classpath", stubs, "--output", BUILD,
          *sorted(classes.rglob("*.class"))], env=env)
     shutil.move(str(BUILD / "classes.dex"), OUT)
-    print(f"built {OUT.relative_to(HERE.parent)} (ai-phone pushes it to the phone on every run)")
+    print(f"built {OUT.relative_to(HERE.parent)} (claude-tele-connect pushes it to the phone on every run)")
 
 
 if __name__ == "__main__":

@@ -159,7 +159,7 @@ class PulseAudioIO:
     async def _spawn_play(self) -> None:
         self.play = await asyncio.create_subprocess_exec(
             "pacat", "--playback", f"--device={self.sink}", "--format=s16le", f"--rate={OUT_RATE}", "--channels=1",
-            "--raw", "--latency-msec=40", "--client-name=ai-phone", stdin=asyncio.subprocess.PIPE,
+            "--raw", "--latency-msec=40", "--client-name=claude-tele-connect", stdin=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL)
 
     async def start(self, on_frame, on_error) -> None:
@@ -167,7 +167,7 @@ class PulseAudioIO:
         self.name = self.source
         self.rec = await asyncio.create_subprocess_exec(
             "parec", f"--device={self.source}", "--format=s16le", f"--rate={IN_RATE}", "--channels=1", "--raw",
-            "--latency-msec=20", "--client-name=ai-phone", stdout=asyncio.subprocess.PIPE,
+            "--latency-msec=20", "--client-name=claude-tele-connect", stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL)
         await self._spawn_play()
 

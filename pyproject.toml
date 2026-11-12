@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ai-phone"
+name = "claude-tele-connect"
 version = "0.1.0"
 description = "Let an AI agent make phone calls from your own Android phone and number, with Gemini Live as the voice"
 readme = "README.md"
@@ -25,10 +25,10 @@ classifiers = [
 bluetooth = ["sounddevice>=0.4.6"]   # bluetooth audio mode on Windows
 
 [project.scripts]
-ai-phone = "ai_phone.cli:main"
+claude-tele-connect = "claude_tele_connect.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-ai_phone = ["callaudio.dex"]
+claude_tele_connect = ["callaudio.dex"]

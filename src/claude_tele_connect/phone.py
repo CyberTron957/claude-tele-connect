@@ -134,7 +134,7 @@ def ensure_device(wait: float = 8) -> str:
 
 def push_dex() -> None:
     if not DEX_LOCAL.exists():
-        raise PhoneError(f"{DEX_LOCAL} missing; reinstall ai-phone or run python android/build.py")
+        raise PhoneError(f"{DEX_LOCAL} missing; reinstall claude-tele-connect or run python android/build.py")
     adb("push", str(DEX_LOCAL), DEX_REMOTE)
 
 

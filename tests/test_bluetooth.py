@@ -6,8 +6,8 @@ import asyncio, math, platform, sys
 from pathlib import Path
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from ai_phone import bluetooth, phone
-from ai_phone.bluetooth import Resampler
+from claude_tele_connect import bluetooth, phone
+from claude_tele_connect.bluetooth import Resampler
 
 def tone(f, rate, secs, amp=8000):
     t = np.arange(int(rate*secs)) / rate

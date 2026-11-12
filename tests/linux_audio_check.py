@@ -5,7 +5,7 @@
 import asyncio, subprocess, sys, time
 import numpy as np
 sys.path.insert(0, "/app/src")
-from ai_phone import bluetooth, phone
+from claude_tele_connect import bluetooth, phone
 
 MAC = "AA:BB:CC:DD:EE:FF"
 print("find by MAC hint:", bluetooth.linux_find([MAC]))
