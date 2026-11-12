@@ -29,10 +29,15 @@ from . import config
 OUT_RATE = 24000   # every provider below speaks 24 kHz 16-bit mono PCM
 
 PROVIDERS = {
-    # name: (default model, default voice, what it needs)
+    # name: (default model, default voice, what it needs). "" = chosen by the service / pipeline.
     "gemini": ("gemini-3.8-live", "Kore", "a Gemini API key (free tier available) or a Vertex AI project"),
     "openai": ("gpt-realtime-2.1", "marin", "an OpenAI API key (paid)"),
+    # Through Pipecat (pipecat_voice.py, optional extra):
+    "grok": ("", "", "an xAI API key (CLAUDE_TELE_CONNECT_XAI_API_KEY)"),
+    "pipeline": ("", "", "speech-to-text, LLM and text-to-speech services of your choice"),
+    "local": ("", "", "nothing paid: Whisper, Ollama and Kokoro running on this computer"),
 }
+PIPECAT = ("grok", "pipeline", "local")
 
 # Tools the AI can use on the call, as plain JSON schema (each provider converts them).
 TOOLS = [
@@ -61,10 +66,18 @@ def configured(provider: str) -> str:
         return "" if config.gemini_backend() else "Gemini isn't configured: run `claude-tele-connect setup`"
     if provider == "openai":
         return "" if config.OPENAI_API_KEY else "OpenAI isn't configured: run `claude-tele-connect setup --provider openai`"
+    if provider in PIPECAT:
+        from . import pipecat_voice
+        probs = pipecat_voice.PipecatVoice(provider, model="", voice="", instructions="", tools=TOOLS).problems()
+        return "; ".join(probs)
     return f"unknown voice provider '{provider}' (choose from: {', '.join(PROVIDERS)})"
 
 
-def make_voice(provider: str, *, model: str, voice: str, instructions: str, tools=TOOLS):
+def make_voice(provider: str, *, model: str, voice: str, instructions: str, tools=TOOLS, stt="", llm="", tts=""):
+    if provider in PIPECAT:
+        from .pipecat_voice import PipecatVoice
+        return PipecatVoice(provider, model=model, voice=voice, instructions=instructions, tools=tools,
+                            stt=stt, llm=llm, tts=tts)
     cls = {"gemini": GeminiVoice, "openai": OpenAIVoice}[provider]
     default_model, default_voice, _ = PROVIDERS[provider]
     return cls(model or default_model, voice or default_voice, instructions, tools)

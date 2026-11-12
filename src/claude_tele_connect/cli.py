@@ -93,6 +93,7 @@ def setup(a) -> int:
 
 def check(a) -> int:
     """Report what works on this phone + computer, and which audio mode to use."""
+    apply_pipeline_flags(a)
     ok = True
     print("Phone (adb)")
     serial = phone.ensure_device()
@@ -129,6 +130,16 @@ def check(a) -> int:
         else:
             print("  not configured: run `claude-tele-connect setup` (a free Gemini API key is easiest)")
             ok = False
+    elif provider in voice.PIPECAT:
+        from . import pipecat_voice
+        v = pipecat_voice.PipecatVoice(provider, model="", voice="", instructions="", tools=voice.TOOLS)
+        print(f"  via Pipecat: {v.model or '(nothing chosen)'}")
+        for p in v.problems():
+            print(f"  {p}")
+            ok = False
+        if provider == "local":
+            print("  local LLM: Ollama must be running (https://ollama.com), with the model pulled "
+                  f"(`ollama pull {v.parts['llm'].partition(':')[2] or 'llama3.2'}`)")
     else:
         print(f"  {voice.configured(provider)}")
         ok = False
@@ -190,7 +201,11 @@ async def outbound(a) -> dict:
         print(f"Context: {a.context}")
     provider = a.provider or voice.default_provider()
     default_model, default_voice, _ = voice.PROVIDERS[provider]
-    print(f"Voice:   {provider} {a.model or default_model} ({a.voice or default_voice}) | audio={a.audio} | max {a.max_minutes} min | record={a.record}")
+    if provider in voice.PIPECAT:
+        from . import pipecat_voice
+        default_model = pipecat_voice.PipecatVoice(provider, model=a.model, voice=a.voice, instructions="",
+                                                   tools=voice.TOOLS).model
+    print(f"Voice:   {provider} {a.model or default_model} ({a.voice or default_voice or 'default voice'}) | audio={a.audio} | max {a.max_minutes} min | record={a.record}")
     if not a.yes:
         if not sys.stdin.isatty():
             raise phone.PhoneError("Not placing the call: no terminal to confirm in. Pass --yes once the user "
@@ -222,7 +237,14 @@ async def outbound(a) -> dict:
     return result
 
 
+def apply_pipeline_flags(a) -> None:
+    for kind in ("stt", "llm", "tts"):
+        if getattr(a, kind, None):
+            setattr(config, kind.upper(), getattr(a, kind))
+
+
 def call(a, parser) -> int:
+    apply_pipeline_flags(a)
     missing = voice.configured(a.provider or voice.default_provider())
     if missing:
         parser.error(missing)
@@ -263,7 +285,11 @@ def main(argv=None) -> int:
 
     def audio_args(sp):
         sp.add_argument("--provider", choices=tuple(voice.PROVIDERS), default=None,
-                        help="AI voice: gemini or openai (default from CLAUDE_TELE_CONNECT_PROVIDER, else gemini)")
+                        help="AI voice (default from CLAUDE_TELE_CONNECT_PROVIDER, else gemini). grok, pipeline "
+                             "and local run through Pipecat (install the pipecat extra)")
+        sp.add_argument("--stt", help="pipeline/local: speech-to-text service, e.g. deepgram, whisper")
+        sp.add_argument("--llm", help="pipeline/local: LLM, e.g. anthropic:claude-haiku-4-5, ollama:llama3.2")
+        sp.add_argument("--tts", help="pipeline/local: text-to-speech, e.g. elevenlabs:<voice id>, kokoro")
         sp.add_argument("--audio", choices=("phone", "bluetooth"), default=config.AUDIO,
                         help="how call audio reaches the computer (default from CLAUDE_TELE_CONNECT_AUDIO, else phone)")
         sp.add_argument("--bt-device", default=config.BT_DEVICE,

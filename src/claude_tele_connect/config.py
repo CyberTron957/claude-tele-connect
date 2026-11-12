@@ -50,6 +50,14 @@ OPENAI_API_KEY = _get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
 OPENAI_URL = _get("OPENAI_URL", "wss://api.openai.com/v1/realtime")
 OPENAI_TRANSCRIBE_MODEL = _get("OPENAI_TRANSCRIBE_MODEL", "gpt-4o-mini-transcribe")
 
+# ---- Pipecat providers ("grok", "pipeline", "local"; needs the pipecat extra) ----
+# Provider "pipeline": speech-to-text, LLM and text-to-speech services by name, optionally "name:model"
+# ("name:voice" for TTS), e.g. deepgram / anthropic:claude-haiku-4-5 / elevenlabs:<voice id>.
+# Their API keys go in settings named after the service, e.g. CLAUDE_TELE_CONNECT_ELEVENLABS_API_KEY.
+STT = _get("STT")
+LLM = _get("LLM")
+TTS = _get("TTS")
+
 # ---- You ----
 # The name the AI uses when it says whose behalf it calls on.
 OWNER_NAME = _get("OWNER")

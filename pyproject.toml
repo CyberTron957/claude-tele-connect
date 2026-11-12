@@ -24,6 +24,11 @@ classifiers = [
 
 [project.optional-dependencies]
 bluetooth = ["sounddevice>=0.4.6"]   # bluetooth audio mode on Windows
+# Voice providers through Pipecat (grok, pipeline, local). Python 3.11+. Add the services you use, e.g.
+#   uv tool install "claude-tele-connect[pipecat]" --with "pipecat-ai[deepgram,elevenlabs,anthropic]"
+pipecat = ["pipecat-ai[silero]>=1.16,<2; python_version >= '3.11'"]
+grok = ["pipecat-ai[silero,xai]>=1.16,<2; python_version >= '3.11'"]
+local = ["pipecat-ai[silero,whisper,kokoro,ollama]>=1.16,<2; python_version >= '3.11'"]
 
 [project.scripts]
 claude-tele-connect = "claude_tele_connect.cli:main"
