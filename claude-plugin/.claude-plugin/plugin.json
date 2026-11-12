@@ -1,0 +1,7 @@
+{
+  "name": "ai-phone",
+  "version": "0.1.0",
+  "description": "Make real phone calls from your own Android phone and number, with a Gemini Live voice agent. Needs the ai-phone command-line tool.",
+  "license": "MIT",
+  "keywords": ["phone", "calls", "android", "voice"]
+}

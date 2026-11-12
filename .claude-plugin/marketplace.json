@@ -1,0 +1,14 @@
+{
+  "name": "ai-phone",
+  "description": "The ai-phone plugin: AI phone calls from your own Android phone",
+  "owner": {
+    "name": "ai-phone contributors"
+  },
+  "plugins": [
+    {
+      "name": "ai-phone",
+      "source": "./claude-plugin",
+      "description": "Make real phone calls from your own Android phone and number, with a Gemini Live voice agent"
+    }
+  ]
+}

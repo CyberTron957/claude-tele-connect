@@ -1,0 +1,10 @@
+.env
+calls/
+*.wav
+android/build/
+build/
+dist/
+*.egg-info/
+__pycache__/
+.venv/
+.DS_Store
