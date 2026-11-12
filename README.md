@@ -45,9 +45,9 @@ download *SDK Platform-Tools* from developer.android.com, unzip, and add the fol
 ## Install
 
 ```
-pipx install git+https://github.com/<owner>/claude-tele-connect
-# or: pip install git+https://github.com/<owner>/claude-tele-connect
-# Windows + bluetooth mode: pipx install "claude-tele-connect[bluetooth] @ git+https://github.com/<owner>/claude-tele-connect"
+pipx install git+https://github.com/CyberTron957/claude-tele-connect
+# or: pip install git+https://github.com/CyberTron957/claude-tele-connect
+# Windows + bluetooth mode: pipx install "claude-tele-connect[bluetooth] @ git+https://github.com/CyberTron957/claude-tele-connect"
 ```
 
 ## Set up
@@ -107,7 +107,7 @@ claude-tele-connect call "<contact name or number>" --goal "Say hello, explain t
 ## Use it from Claude Code
 
 ```
-/plugin marketplace add <owner>/claude-tele-connect
+/plugin marketplace add CyberTron957/claude-tele-connect
 /plugin install tele-connect@claude-tele-connect
 ```
 
@@ -202,7 +202,7 @@ settings when you're not using it.
 ## Development
 
 ```
-git clone https://github.com/<owner>/claude-tele-connect && cd claude-tele-connect
+git clone https://github.com/CyberTron957/claude-tele-connect && cd claude-tele-connect
 pip install -e .
 python tests/test_bluetooth.py        # resampler and Bluetooth bridge logic, no hardware
 tests/linux_audio_test.sh             # Linux Bluetooth audio path in Docker, with virtual devices
