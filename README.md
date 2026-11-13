@@ -9,8 +9,38 @@ Claude, Groq, ... or fully local and free). No telephony provider, no new number
 claude-tele-connect call "Dr Mehta Clinic" --goal "Book a check-up for next Tuesday afternoon" --context "Name: Sam Lee"
 ```
 
-It also comes as a **Claude Code plugin**, so you can just ask Claude: *"call the salon and move my
-haircut to Saturday"*. Claude confirms the call with you, places it, and tells you what was agreed.
+## Install: let your AI agent do it
+
+Copy this prompt into Claude Code, Codex, Cursor or any coding agent that can run commands:
+
+```
+Install claude-tele-connect (https://github.com/CyberTron957/claude-tele-connect) so you can make phone
+calls from my Android phone, and set it up for me.
+
+1. If `claude-tele-connect --version` fails, install it: `uv tool install git+https://github.com/CyberTron957/claude-tele-connect`
+   (or `pipx install git+...`; if neither exists, install uv first). If it asks for credentials, tell me to
+   run `gh auth login`.
+2. Run `claude-tele-connect guide setup` and follow it until `claude-tele-connect status` says ready.
+   Tell me what I need to do on my phone. Never ask me to paste an API key in the chat; use the local key
+   form the guide describes.
+3. Then run `claude-tele-connect guide call` and follow it for every call: always show me the number and
+   goal and wait for my OK before dialing.
+```
+
+The agent installs the tool and adb, picks the AI voice with you (Gemini has a free tier), and connects and
+checks your phone. You only tap a few things on the phone (turn on USB or Wireless debugging), paste your API
+key into a form that opens in your browser, and say yes to a test call. After that, just ask: *"call the
+salon and move my haircut to Saturday"*. The agent confirms the call with you, places it, and tells you what
+was agreed.
+
+In Claude Code you can instead add the plugin once and say **"set up phone calling"**:
+
+```
+/plugin marketplace add CyberTron957/claude-tele-connect
+/plugin install tele-connect@claude-tele-connect
+```
+
+Prefer to do it yourself? See [Manual setup](#manual-setup-without-an-agent).
 
 ## How it works
 
@@ -88,7 +118,9 @@ other person's words) to improve its products. If that isn't acceptable, enable 
 > audio code is tested, but it hasn't been used with a real phone yet. Reports from other phones are very
 > welcome; run `claude-tele-connect check` and open an issue with the output.
 
-## Requirements
+## Manual setup (without an agent)
+
+### Requirements
 
 - An **Android 13+ phone** with a SIM that makes normal calls.
 - A computer with **Python 3.10+** and **adb** (Android platform-tools).
@@ -98,7 +130,7 @@ other person's words) to improve its products. If that isn't acceptable, enable 
 Install adb: macOS `brew install android-platform-tools`; Ubuntu/Debian `sudo apt install adb`; Windows:
 download *SDK Platform-Tools* from developer.android.com, unzip, and add the folder to `PATH`.
 
-## Install
+### Install
 
 ```
 pipx install git+https://github.com/CyberTron957/claude-tele-connect
@@ -106,7 +138,7 @@ pipx install git+https://github.com/CyberTron957/claude-tele-connect
 # Windows + bluetooth mode: pipx install "claude-tele-connect[bluetooth] @ git+https://github.com/CyberTron957/claude-tele-connect"
 ```
 
-## Set up
+### Set up
 
 ```
 claude-tele-connect setup
@@ -125,8 +157,8 @@ A step-by-step wizard does everything below with you, and you can stop it any ti
 Rerun one step with `claude-tele-connect setup --step you|voice|phone|check|call`. Settings live in
 `~/.claude-tele-connect/.env`.
 
-**Setting up through Claude (or a script).** Every step also has a non-interactive command, which is what
-the plugin's setup skill uses:
+**Setting up through an agent (or a script).** Every step also has a non-interactive command, which is what
+`claude-tele-connect guide setup` tells the agent to use:
 
 | Command | Does |
 |---|---|
@@ -139,17 +171,17 @@ the plugin's setup skill uses:
 
 The sections below explain the same steps by hand.
 
-### 1. AI voice and your name
+#### 1. AI voice and your name
 
 Run `claude-tele-connect setup --step voice` and `--step you`, or set the values in `~/.claude-tele-connect/.env`
 (see [Settings](#usage)).
 
-### 2. Turn on developer options (phone)
+#### 2. Turn on developer options (phone)
 
 **Settings → About phone → Software information**, tap **Build number** 7 times, enter your PIN.
 (On many phones Build number is directly under About phone.)
 
-### 3. Connect the phone over adb
+#### 3. Connect the phone over adb
 
 USB is simplest for the first test; wireless is easier day to day.
 
@@ -170,7 +202,7 @@ when the phone changes Wi-Fi network or reboots. claude-tele-connect finds the n
 drops; if wireless debugging got switched off, turn it back on. For a phone that sits on your desk, USB is
 the most reliable.
 
-### 4. Check
+#### 4. Check
 
 ```
 claude-tele-connect check
@@ -179,7 +211,7 @@ claude-tele-connect check
 It copies the phone program to the phone, checks the AI voice settings, and tells you which audio mode your phone
 needs. "call audio interception: supported" means you're done.
 
-### 5. First call
+#### 5. First call
 
 Call a number you control, or an automated service line, before calling a person:
 
@@ -187,20 +219,12 @@ Call a number you control, or an automated service line, before calling a person
 claude-tele-connect call "<contact name or number>" --goal "Say hello, explain this is a test of an AI calling assistant, and say goodbye."
 ```
 
-## Use it from Claude Code
+## Use it from an agent
 
-```
-/plugin marketplace add CyberTron957/claude-tele-connect
-/plugin install tele-connect@claude-tele-connect
-```
-
-Then say **"set up phone calling"**: the plugin's setup skill installs the tool and adb, connects the
-phone, runs the check and does a test call, leaving only the phone taps and your API key to you. After
-that, ask Claude to make a call. The plugin's skill makes Claude look up the contact, show you the
-number, goal and details, and wait for your OK before every call. After the call it reads the transcript
-and tells you the outcome. (You can also copy `claude-plugin/skills/call/` into `~/.claude/skills/`.)
-
-Other agents can use the same command: `claude-tele-connect call ... --yes --json` prints the result and the
+`claude-tele-connect guide call` prints the rules an agent follows: look up the contact, show you the
+number, goal and details, wait for your OK before every call, then read the transcript and tell you the
+outcome. In Claude Code the plugin's `call` skill does this for you (or copy `claude-plugin/skills/` into
+`~/.claude/skills/`). Any other agent can run `claude-tele-connect call ... --yes --json` for the result and
 transcript as JSON.
 
 ## Usage

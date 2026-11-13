@@ -292,6 +292,9 @@ def main(argv=None) -> int:
         sp.add_argument("--bt-device", default=config.BT_DEVICE,
                         help="bluetooth mode: part of the audio device name (default: the phone's Bluetooth name)")
 
+    g = sub.add_parser("guide", help="print the instructions an AI agent follows (setup, call)")
+    g.add_argument("topic", nargs="?", choices=("setup", "call"), default="setup")
+
     c = sub.add_parser("check", help="check the setup and which audio mode your phone needs")
     audio_args(c)
     c.add_argument("--json", action="store_true", help="machine-readable result; also saves the audio mode")
@@ -317,6 +320,10 @@ def main(argv=None) -> int:
 
     a = p.parse_args(argv)
     try:
+        if a.cmd == "guide":
+            from importlib import resources
+            print((resources.files("claude_tele_connect") / "guides" / f"{a.topic}.md").read_text(encoding="utf-8"))
+            return 0
         if a.cmd == "setup":
             return setup(a)
         if a.cmd in ("status", "key", "phone", "test-voice"):

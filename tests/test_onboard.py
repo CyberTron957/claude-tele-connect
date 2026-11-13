@@ -98,3 +98,17 @@ def test_agent_commands():
 
 
 test_agent_commands()
+
+
+def test_guides_ship_with_the_tool():
+    import contextlib, io
+    from claude_tele_connect import cli
+    for topic, needle in (("setup", "status --json"), ("call", "Shall I place this call?")):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            assert cli.main(["guide", topic]) == 0
+        assert needle in buf.getvalue(), topic
+    print("ok  agent guides ship inside the tool")
+
+
+test_guides_ship_with_the_tool()

@@ -40,4 +40,4 @@ claude-tele-connect = "claude_tele_connect.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-claude_tele_connect = ["callaudio.dex"]
+claude_tele_connect = ["callaudio.dex", "guides/*.md"]
