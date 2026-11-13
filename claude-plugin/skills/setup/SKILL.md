@@ -59,6 +59,11 @@ calls for, and the country code. Explain the choice briefly if the user asks:
   tier has rate limits, and Google may use what is said on free-tier calls to improve its products
   (enabling billing on the key avoids that).
 - **OpenAI Realtime**: paid per minute; needs an OpenAI API key with billing.
+- **Grok Voice, ElevenLabs voices, Deepgram, Claude, Groq, or fully local and free (Whisper + Ollama +
+  Kokoro)**: these run through the optional Pipecat extra (Python 3.11+). See the README section "More
+  providers through Pipecat" for the install line and settings; `claude-tele-connect check` names any missing
+  package or key. Mention that pipelines (speech-to-text + LLM + voice) answer more slowly than Gemini or
+  OpenAI, so a fast LLM matters.
 
 Do not run `setup` yourself: it needs the user's typing, and the key must not pass through the chat.
 

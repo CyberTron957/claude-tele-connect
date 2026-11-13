@@ -352,6 +352,8 @@ class CallSession:
                 await self._handle_tool(*ev[1:])
             elif kind == "info":
                 self.log(f"  [{self.provider}] {ev[1]}")
+            elif kind == "fatal":
+                raise RuntimeError(f"{self.provider} voice failed: {ev[1]}")
 
     def _on_ai_audio(self) -> None:
         if self.ai_turn_open:

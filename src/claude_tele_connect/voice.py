@@ -18,6 +18,7 @@ Events are tuples:
     ("turn_complete",)      the AI finished a turn
     ("tool", id, name, args)
     ("info", text)          something worth logging
+    ("fatal", text)         the voice can't continue: the call is ended
 """
 
 import asyncio

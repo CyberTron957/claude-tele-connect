@@ -6,6 +6,7 @@
 2. GeminiVoice builds a valid Live config.
 3. A whole CallSession with a fake voice and a fake phone: answer, AI speech reaches the phone,
    transcript, end_call hangs up after the goodbye.
+4. Pipecat providers: setup checks (no Pipecat needed). For a real Pipecat run see tests/pipecat_call_check.py.
 """
 
 import asyncio
@@ -201,7 +202,28 @@ async def test_call_session():
     print("ok  call session end to end (fake voice + fake phone)")
 
 
+# ------------------------------------------------------------------ 4. Pipecat providers (setup checks)
+
+def test_pipecat_setup_messages():
+    from claude_tele_connect import pipecat_voice as pv
+    v = pv.PipecatVoice("pipeline", model="", voice="", instructions="", tools=voice.TOOLS)
+    assert any("no stt chosen" in p for p in v.problems()), v.problems()
+    v = pv.PipecatVoice("pipeline", model="", voice="", instructions="", tools=voice.TOOLS,
+                        stt="bogus", llm="openai:gpt-4.1-mini", tts="elevenlabs:abc")
+    probs = " | ".join(v.problems())
+    assert "unknown stt 'bogus'" in probs, probs
+    assert v.parts["llm"] == "openai:gpt-4.1-mini" and v.parts["tts"] == "elevenlabs:abc"
+    v = pv.PipecatVoice("local", model="", voice="", instructions="", tools=voice.TOOLS)
+    assert v.parts == {"stt": "whisper", "llm": "ollama:llama3.2", "tts": "kokoro"}, v.parts
+    v = pv.PipecatVoice("grok", model="", voice="", instructions="", tools=voice.TOOLS)
+    assert v.parts == {"s2s": "grok"}
+    os.environ.pop("XAI_API_KEY", None)
+    assert any("XAI_API_KEY" in p or "install the Pipecat" in p for p in v.problems()), v.problems()
+    print("ok  pipecat provider setup checks")
+
+
 async def main():
+    test_pipecat_setup_messages()
     await test_openai()
     await test_openai_rejects_bad_settings()
     test_gemini_config()

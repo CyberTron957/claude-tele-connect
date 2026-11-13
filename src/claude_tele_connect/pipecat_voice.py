@@ -16,6 +16,7 @@ import dataclasses
 import importlib
 import json
 import os
+import platform
 import time
 
 from . import config, phone
@@ -31,7 +32,10 @@ SERVICES = {
         "elevenlabs": ("elevenlabs.stt", "ElevenLabsRealtimeSTTService", "ELEVENLABS_API_KEY", "elevenlabs"),
         "openai":     ("openai.stt", "OpenAISTTService", "OPENAI_API_KEY", "openai"),
         "groq":       ("groq.stt", "GroqSTTService", "GROQ_API_KEY", "groq"),
-        "whisper":    ("whisper.stt", "WhisperSTTService", None, "whisper"),          # local, free
+        # local, free. On Apple Silicon Pipecat requires (and uses) the faster MLX build.
+        "whisper":    (("whisper.stt", "WhisperSTTServiceMLX", None, "whisper,mlx-whisper")
+                       if platform.system() == "Darwin" and platform.machine() == "arm64"
+                       else ("whisper.stt", "WhisperSTTService", None, "whisper")),
     },
     "llm": {
         "openai":     ("openai.llm", "OpenAILLMService", "OPENAI_API_KEY", "openai"),
@@ -57,6 +61,16 @@ SERVICES = {
 }
 
 LOCAL = {"stt": "whisper", "llm": "ollama:llama3.2", "tts": "kokoro"}
+
+# Used when a spec has no ":value" and the service has no usable default of its own.
+DEFAULTS = {
+    ("tts", "kokoro"): "af_heart",
+    ("tts", "piper"): "en_US-ryan-high",
+    ("tts", "elevenlabs"): "21m00Tcm4TlvDq8ikWAM",   # a premade ElevenLabs voice
+    ("llm", "ollama"): "llama3.2",
+}
+if SERVICES["stt"]["whisper"][1] == "WhisperSTTServiceMLX":   # Pipecat's MLX default is "tiny": too weak for calls
+    DEFAULTS[("stt", "whisper")] = "mlx-community/whisper-large-v3-turbo-q4"
 
 
 class SetupError(phone.PhoneError):
@@ -87,16 +101,21 @@ def missing(kind: str, spec: str) -> str:
         return f"{kind} '{name}' needs CLAUDE_TELE_CONNECT_{key} (or {key}) in {config.ENV_FILE}"
     if name == "vertex" and not config.GCP_PROJECT:
         return "llm 'vertex' needs CLAUDE_TELE_CONNECT_GCP_PROJECT"
-    try:
-        importlib.import_module("pipecat")
-    except ImportError:
-        return f"Pipecat isn't installed: {install_hint([extra])}"
+    if needs_install(kind, spec):
+        return f"{kind} '{name}' needs extra packages: {install_hint([extra])}"
+    return ""
+
+
+def needs_install(kind: str, spec: str) -> str:
+    """The pipecat extra to install if this service's packages are missing, else ''."""
+    name = spec.partition(":")[0]
+    mod, _, _, extra = SERVICES[kind][name]
     try:
         _silence_pipecat_logs()
         importlib.import_module(f"pipecat.services.{mod}")
+        return ""
     except Exception:
-        return f"{kind} '{name}' needs extra packages: {install_hint([extra])}"
-    return ""
+        return extra
 
 
 def _silence_pipecat_logs():
@@ -115,13 +134,15 @@ def build(kind: str, spec: str, instructions: str = ""):
     if err:
         raise SetupError(err)
     name, _, value = spec.partition(":")
+    value = value or DEFAULTS.get((kind, name), "")
     mod, cls_name, key, _ = SERVICES[kind][name]
     cls = getattr(importlib.import_module(f"pipecat.services.{mod}"), cls_name)
     kw = {}
     if key:
         kw["api_key"] = _key(key)
     if name == "vertex":
-        kw.update(project_id=config.GCP_PROJECT, location=config.GCP_LOCATION)
+        # Gemini text models are served from the global endpoint; CLAUDE_TELE_CONNECT_LLM_LOCATION overrides.
+        kw.update(project_id=config.GCP_PROJECT, location=os.environ.get("CLAUDE_TELE_CONNECT_LLM_LOCATION", "global"))
     S = getattr(cls, "Settings", None)
     fields = {f.name for f in dataclasses.fields(S)} if S and dataclasses.is_dataclass(S) else set()
     s = {}
@@ -129,6 +150,8 @@ def build(kind: str, spec: str, instructions: str = ""):
         s["voice" if kind == "tts" else "model"] = value
     if instructions and "system_instruction" in fields:
         s["system_instruction"] = instructions
+    if name in ("google", "vertex") and "thinking" in fields and hasattr(cls, "ThinkingConfig"):
+        s["thinking"] = cls.ThinkingConfig(thinking_level="low")   # phone turns need a fast first word
     if s:
         kw["settings"] = S(**{k: v for k, v in s.items() if k in fields})
     return cls(**kw)
@@ -160,14 +183,21 @@ class PipecatVoice:
         self._worker = self._runner = self._run_task = None
 
     def problems(self) -> list[str]:
-        out = []
+        out, extras = [], []
         for kind, spec in self.parts.items():
+            name = spec.partition(":")[0]
             if not spec:
                 out.append(f"no {kind} chosen: set CLAUDE_TELE_CONNECT_{kind.upper()} or pass --{kind}")
+            elif name in SERVICES[kind] and needs_install(kind, spec):
+                extras += needs_install(kind, spec).split(",")
             else:
                 m = missing(kind, spec)
                 if m:
                     out.append(m)
+        if extras:
+            hint = ('uv tool install --reinstall "claude-tele-connect[local]"   (pip: pip install "claude-tele-connect[local]")'
+                    if self.provider == "local" else install_hint(extras))
+            out.insert(0, f"install the Pipecat packages for {self.model}: {hint}")
         return out
 
     async def connect(self):
@@ -231,10 +261,28 @@ class PipecatVoice:
         for t in self.tools:
             llm.register_function(t["name"], self._on_tool, cancel_on_interruption=False)
 
+        retries = {"n": 0}
+
+        @llm.event_handler("on_completion_timeout")
+        async def _llm_timeout(service):
+            # A slow first reply would otherwise leave the call silent: ask again (twice at most per call).
+            if retries["n"] < 2:
+                retries["n"] += 1
+                from pipecat.frames.frames import LLMRunFrame
+                q.put_nowait(("info", "LLM reply timed out; retrying"))
+                await self._worker.queue_frames([LLMRunFrame()])
+
+        from pipecat.turns.user_stop.speech_timeout_user_turn_stop_strategy import SpeechTimeoutUserTurnStopStrategy
+        from pipecat.turns.user_turn_strategies import UserTurnStrategies
+
         context = LLMContext(tools=schema)
+        # A plain silence timeout ends the caller's turn: snappier on phone audio than Pipecat's default
+        # smart-turn model, and close to the native providers' 0.5 s.
         user_agg, bot_agg = LLMContextAggregatorPair(
             context, user_params=LLMUserAggregatorParams(
-                vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.5))))
+                vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.3)),
+                user_turn_strategies=UserTurnStrategies(
+                    stop=[SpeechTimeoutUserTurnStopStrategy(user_speech_timeout=0.4)])))
         if realtime:
             stages = [self._in, user_agg, llm, out, bot_agg]
         else:
@@ -252,7 +300,10 @@ class PipecatVoice:
 
         @self._worker.event_handler("on_pipeline_error")
         async def _error(worker, frame):
-            q.put_nowait(("info", f"error: {getattr(frame, 'error', frame)}"))
+            proc = getattr(frame, "processor", None)
+            dead = getattr(frame, "fatal", False) or (proc is not None and not getattr(proc, "is_usable", True))
+            msg = str(getattr(frame, "error", frame))[:300]
+            q.put_nowait(("fatal" if dead else "info", f"{proc or 'pipeline'}: {msg}"))
 
         self._runner = WorkerRunner(handle_sigint=False)
         await self._runner.add_workers(self._worker)

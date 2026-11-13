@@ -1,8 +1,9 @@
 # claude-tele-connect
 
 Let an AI agent make phone calls from **your own Android phone and SIM**. The phone dials over adb, the
-call audio reaches your computer, and an AI voice (Gemini Live, free tier available, or OpenAI Realtime)
-talks on the call. No telephony provider, no new number: people see your normal number.
+call audio reaches your computer, and an AI voice talks on the call: Gemini Live (free tier available),
+OpenAI Realtime, Grok Voice, or your own mix of speech-to-text, LLM and voice (ElevenLabs, Deepgram,
+Claude, Groq, ... or fully local and free). No telephony provider, no new number: people see your normal number.
 
 ```
 claude-tele-connect call "Dr Mehta Clinic" --goal "Book a check-up for next Tuesday afternoon" --context "Name: Sam Lee"
@@ -33,6 +34,43 @@ haircut to Saturday"*. Claude confirms the call with you, places it, and tells y
 that speak the OpenAI Realtime protocol (for example Azure OpenAI) work through
 `CLAUDE_TELE_CONNECT_OPENAI_URL`.
 
+### More providers through Pipecat
+
+[Pipecat](https://github.com/pipecat-ai/pipecat) (BSD-2) already talks to dozens of AI voice services, so
+claude-tele-connect uses it for everything beyond Gemini and OpenAI. It is an optional extra (Python 3.11+).
+
+| Provider | What talks | Install |
+|---|---|---|
+| `grok` | Grok Voice (xAI) speech-to-speech; key in `CLAUDE_TELE_CONNECT_XAI_API_KEY` | `uv tool install "claude-tele-connect[grok] @ git+https://github.com/CyberTron957/claude-tele-connect"` |
+| `pipeline` | Speech-to-text + LLM + text-to-speech that you choose | `[pipecat]` extra plus the services, see below |
+| `local` | Whisper + Ollama + Kokoro on your computer: **free, nothing leaves it** | `[local]` extra, plus [Ollama](https://ollama.com) with `ollama pull llama3.2` |
+
+`pipeline` services (pass `--stt/--llm/--tts`, or set `CLAUDE_TELE_CONNECT_STT/LLM/TTS`; add `:model`, or
+`:voice` for TTS):
+
+| Part | Choices |
+|---|---|
+| `--stt` | `deepgram`, `elevenlabs`, `openai`, `groq`, `whisper` (local) |
+| `--llm` | `openai`, `anthropic`, `google`, `vertex`, `groq`, `grok`, `openrouter`, `ollama` (local) |
+| `--tts` | `elevenlabs`, `cartesia`, `openai`, `deepgram`, `kokoro` (local), `piper` (local) |
+
+```
+uv tool install "claude-tele-connect[pipecat] @ git+https://github.com/CyberTron957/claude-tele-connect" \
+    --with "pipecat-ai[deepgram,anthropic,elevenlabs]"
+claude-tele-connect call "Salon" --goal "..." --provider pipeline \
+    --stt deepgram --llm anthropic:claude-haiku-4-5 --tts elevenlabs:<voice id>
+```
+
+API keys go in `~/.claude-tele-connect/.env` named after the service: `CLAUDE_TELE_CONNECT_DEEPGRAM_API_KEY`,
+`_ELEVENLABS_API_KEY`, `_ANTHROPIC_API_KEY`, `_GROQ_API_KEY`, `_CARTESIA_API_KEY`, `_OPENROUTER_API_KEY`,
+`_XAI_API_KEY` (the plain names like `ELEVENLABS_API_KEY` work too). `claude-tele-connect check` says exactly
+which package or key is missing.
+
+**Speed:** speech-to-speech models (Gemini Live, OpenAI, Grok) answer in about a second. A pipeline adds
+up the parts: in testing, local Whisper + Gemini 3.8 Flash + Kokoro took about 4-5 s from the caller
+finishing to the AI speaking, most of it the LLM. Pick a fast LLM (Groq, a mini/flash/haiku model) for
+pipelines. The `local` provider's speed depends on your computer.
+
 **Free tier and privacy:** on Gemini's free tier, Google may use what is said on your calls (including the
 other person's words) to improve its products. If that isn't acceptable, enable billing on the key
 (paid tier) or use Vertex AI or OpenAI. The free tier's limits are shown in AI Studio for your key.
@@ -44,7 +82,9 @@ other person's words) to improve its products. If that isn't acceptable, enable 
 
 > **Status: early.** Tested so far: `phone` mode with a Samsung Galaxy M14 5G (Android 15) from macOS and
 > Windows 11, over USB and wireless adb, in English and Telugu, with Gemini Live. The `openai` provider is
-> tested against a simulated server only, not yet on a real call. `bluetooth` mode is implemented and its
+> tested against a simulated server only, not yet on a real call. Pipecat providers: `pipeline` tested in a
+> simulated call (Whisper + Vertex Gemini + Kokoro); `grok`, `local` with Ollama, and the hosted
+> STT/TTS services are untested so far. `bluetooth` mode is implemented and its
 > audio code is tested, but it hasn't been used with a real phone yet. Reports from other phones are very
 > welcome; run `claude-tele-connect check` and open an issue with the output.
 
@@ -150,7 +190,8 @@ claude-tele-connect setup
 | `--context "..."` | Facts the AI may share (booking name, order number, limits). It knows nothing else about you. |
 | `--max-minutes N` | Hard limit with a polite wrap-up (default 5) |
 | `--ring-timeout N` | Seconds to wait for an answer (default 45) |
-| `--provider gemini\|openai` | Which AI voice to use (default from setup) |
+| `--provider ...` | Which AI voice: `gemini`, `openai`, `grok`, `pipeline`, `local` (default from setup) |
+| `--stt`, `--llm`, `--tts` | `pipeline`/`local`: the services to use |
 | `--voice`, `--model` | Voice and model (defaults: Kore / `gemini-3.8-live`, marin / `gpt-realtime-2.1`) |
 | `--audio phone\|bluetooth` | How call audio reaches the computer |
 | `--record` | Also save both sides as WAV files |
@@ -161,7 +202,8 @@ Settings (in `~/.claude-tele-connect/.env`, a `.env` in the current folder, or e
 
 | Setting | Meaning |
 |---|---|
-| `CLAUDE_TELE_CONNECT_PROVIDER` | `gemini` or `openai` |
+| `CLAUDE_TELE_CONNECT_PROVIDER` | `gemini`, `openai`, `grok`, `pipeline` or `local` |
+| `CLAUDE_TELE_CONNECT_STT`, `_LLM`, `_TTS` | `pipeline` services, e.g. `deepgram`, `groq:llama-3.3-70b-versatile`, `elevenlabs:<voice id>` |
 | `CLAUDE_TELE_CONNECT_GEMINI_API_KEY` | Gemini API key (also read from `GEMINI_API_KEY`) |
 | `CLAUDE_TELE_CONNECT_GCP_PROJECT` | Use Vertex AI in this Google Cloud project instead (with `gcloud auth application-default login`) |
 | `CLAUDE_TELE_CONNECT_OPENAI_API_KEY` | OpenAI API key (also read from `OPENAI_API_KEY`) |
@@ -229,6 +271,7 @@ git clone https://github.com/CyberTron957/claude-tele-connect && cd claude-tele-
 pip install -e .
 python tests/test_bluetooth.py        # resampler and Bluetooth bridge logic, no hardware
 python tests/test_voice.py            # voice providers (fake OpenAI server) and a simulated call
+python tests/pipecat_call_check.py    # a simulated call through a real Pipecat pipeline (macOS, needs services)
 tests/linux_audio_test.sh             # Linux Bluetooth audio path in Docker, with virtual devices
 ```
 
