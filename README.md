@@ -123,8 +123,19 @@ A step-by-step wizard does everything below with you, and you can stop it any ti
 5. **Test call** (optional) to a number you control.
 
 Rerun one step with `claude-tele-connect setup --step you|voice|phone|check|call`. Settings live in
-`~/.claude-tele-connect/.env`. For scripts, `setup --provider ... --api-key ... --owner ...` saves settings
-without asking.
+`~/.claude-tele-connect/.env`.
+
+**Setting up through Claude (or a script).** Every step also has a non-interactive command, which is what
+the plugin's setup skill uses:
+
+| Command | Does |
+|---|---|
+| `claude-tele-connect status [--json]` | What's done, what's missing, and the next command to run |
+| `claude-tele-connect setup --owner "Sam" --provider gemini [--country-code 91 --stt/--llm/--tts ...]` | Saves exactly the options given |
+| `claude-tele-connect key [gemini openai xai elevenlabs ...]` | Opens a form on `127.0.0.1` in your browser to paste API keys, so keys never pass through the AI (`--stdin` for scripts) |
+| `claude-tele-connect phone pair <ip:port> <code>` / `phone connect <ip:port>` / `phone status` | Wireless debugging pairing and connection |
+| `claude-tele-connect test-voice [--json]` | A short live test of the AI voice, no phone call |
+| `claude-tele-connect check --json` | Phone check; saves the audio mode |
 
 The sections below explain the same steps by hand.
 

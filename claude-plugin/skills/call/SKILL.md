@@ -15,11 +15,10 @@ assistant calling on the user's behalf.
 Run `claude-tele-connect --version`. If the command is missing, use the **setup** skill to install and
 configure it (it also covers adb and connecting the phone), then come back here.
 
-On first use, or after any error about the phone or the AI voice, run `claude-tele-connect check`. It reports whether the
-phone is connected, whether the AI voice is configured, and which audio mode the phone needs. If it says
-"Fix the items above", relay those items to the user in plain words; most need the user to act on the
-phone (turn on wireless debugging, pair, plug in USB) or to run `claude-tele-connect setup` in their own terminal,
-which asks for the voice provider and its API key. Never ask the user to paste an API key into the chat.
+On first use, or after any error about the phone or the AI voice, run `claude-tele-connect status --json`.
+If `ready` is false, use the **setup** skill to fix what `next` names (most fixes need the user to act on
+the phone, or to paste a key into the form `claude-tele-connect key` opens). Never ask the user to paste an
+API key into the chat.
 
 ## 2. Confirm the exact call with the user (required, every call)
 
@@ -82,6 +81,6 @@ booked or agreed unless the transcript shows the other person clearly confirmed 
 | Message | What to do |
 |---|---|
 | "No authorized phone found over adb" | Phone not reachable. Ask the user to check Wireless debugging is on (or plug in USB), then retry. Wireless debugging turns itself off when the phone changes Wi-Fi. |
-| "Gemini isn't configured" / "OpenAI isn't configured" / "your name isn't set" | The user runs `claude-tele-connect setup` in their terminal. |
+| "... isn't configured" / "your name isn't set" / a missing key | Use the setup skill: `claude-tele-connect status --json` says what to do. |
 | "phone is already in a call" | Wait until the user's current call ends. |
-| `ended_by` is "phone audio never became ready" | Run `claude-tele-connect check`; the phone may need Bluetooth audio mode. |
+| `ended_by` is "phone audio never became ready" | Run `claude-tele-connect check --json`; the phone may need Bluetooth audio mode. |

@@ -244,7 +244,8 @@ def install_pipecat(provider: str) -> bool:
     return True
 
 
-def test_voice(provider: str) -> bool:
+def run_voice_test(provider: str):
+    """Connect the AI voice, have it say one sentence, return (total seconds, audio seconds, text)."""
     from .agent import system_prompt
 
     async def go():
@@ -272,9 +273,13 @@ def test_voice(provider: str) -> bool:
             await v.close()
         return time.time() - t0, audio / 48000, text.strip()
 
+    return asyncio.run(go())
+
+
+def test_voice(provider: str) -> bool:
     say("Testing...")
     try:
-        secs, audio_s, text = asyncio.run(go())
+        secs, audio_s, text = run_voice_test(provider)
     except Exception as e:
         bad(f"Voice test failed: {str(e)[:300]}")
         say("Check the key and model, then run: claude-tele-connect setup --step voice")

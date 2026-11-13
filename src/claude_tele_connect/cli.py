@@ -30,66 +30,30 @@ FREE_TIER_NOTE = ("Gemini's free tier costs nothing (with rate limits). On the f
 
 
 def setup(a) -> int:
-    flags = (a.provider, a.api_key, a.openai_api_key, a.gcp_project, a.owner, a.country_code)
+    flags = (a.provider, a.api_key, a.openai_api_key, a.gcp_project, a.owner, a.country_code,
+             a.pronouns, a.stt, a.llm, a.tts, a.audio)
     if a.step or (sys.stdin.isatty() and all(f is None for f in flags)):
         from . import onboard
         return onboard.wizard(a.step or "")
-    values = {}
-    interactive = sys.stdin.isatty()
-    provider = a.provider
-    if provider is None and interactive and not (a.api_key or a.gcp_project or a.openai_api_key):
-        print("Which AI voice should talk on your calls?")
-        print("  1) Gemini Live (Google)  - free: just needs a free API key from aistudio.google.com/apikey")
-        print("  2) OpenAI Realtime       - paid: needs an OpenAI API key with billing")
-        provider = {"2": "openai", "openai": "openai"}.get(input("Choose 1 or 2 [1]: ").strip().lower(), "gemini")
-    provider = provider or ("openai" if a.openai_api_key else "gemini")
-    values["CLAUDE_TELE_CONNECT_PROVIDER"] = provider
-
-    if provider == "openai":
-        key = a.openai_api_key
-        if key is None and interactive:
-            print("OpenAI API key from https://platform.openai.com/api-keys")
-            key = getpass.getpass("OpenAI API key (hidden): ").strip()
-        if key:
-            values["CLAUDE_TELE_CONNECT_OPENAI_API_KEY"] = key
-        elif not config.OPENAI_API_KEY:
-            print("No OpenAI key given; calls won't work until you add one (run setup again).")
-    else:
-        key = a.api_key
-        if key is None and a.gcp_project is None and interactive:
-            print("Gemini access. Easiest: a free API key from https://aistudio.google.com/apikey")
-            print("(Leave empty to use a Google Cloud project with Vertex AI instead.)")
-            key = getpass.getpass("Gemini API key (hidden): ").strip()
-        if key:
-            values["CLAUDE_TELE_CONNECT_GEMINI_API_KEY"] = key
-            print(FREE_TIER_NOTE)
-        project = a.gcp_project
-        if not key and project is None and interactive:
-            project = input("Google Cloud project ID (Vertex AI, uses `gcloud auth application-default login`): ").strip()
-        if project:
-            values["CLAUDE_TELE_CONNECT_GCP_PROJECT"] = project
-    owner = a.owner
-    if owner is None and interactive:
-        owner = input("Your name (the AI says it's calling on behalf of this name): ").strip()
-    if owner:
-        values["CLAUDE_TELE_CONNECT_OWNER"] = owner
-    cc = a.country_code
-    if cc is None and interactive:
-        cc = input("Country code for numbers saved without one, e.g. 91 or 1 (optional): ").strip()
-    if cc:
-        values["CLAUDE_TELE_CONNECT_COUNTRY_CODE"] = cc.lstrip("+")
-    if len(values) == 1 and not interactive and a.provider is None:
-        print("Nothing to save. Run in a terminal, or pass --api-key / --openai-api-key / --gcp-project / --owner.")
+    # Options given: save exactly those (no questions). Used by scripts and by AI agents.
+    from . import onboard
+    k = onboard.key_name
+    values = {k("PROVIDER"): a.provider, k("GEMINI_API_KEY"): a.api_key, k("OPENAI_API_KEY"): a.openai_api_key,
+              k("GCP_PROJECT"): a.gcp_project, k("OWNER"): a.owner,
+              k("COUNTRY_CODE"): a.country_code.lstrip("+") if a.country_code is not None else None,
+              k("OWNER_PRONOUNS"): a.pronouns, k("STT"): a.stt, k("LLM"): a.llm, k("TTS"): a.tts, k("AUDIO"): a.audio}
+    values = {key: v.strip() for key, v in values.items() if v is not None}
+    if not values:
+        print("Nothing to save. Run `claude-tele-connect setup` in a terminal for the step-by-step setup, or pass options.")
         return 1
-
-    config.HOME.mkdir(parents=True, exist_ok=True)
-    lines = config.ENV_FILE.read_text(encoding="utf-8").splitlines() if config.ENV_FILE.exists() else []
-    lines = [l for l in lines if l.split("=", 1)[0].strip() not in values]
-    lines += [f"{k}={v}" for k, v in values.items()]
-    config.ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    if os.name != "nt":
-        config.ENV_FILE.chmod(0o600)
-    print(f"Saved {', '.join(values)} to {config.ENV_FILE}. Next: claude-tele-connect check")
+    onboard.save(values)
+    secret = ("API_KEY",)
+    shown = [f"{key.removeprefix('CLAUDE_TELE_CONNECT_')}={'(hidden)' if key.endswith(secret) else v or '(cleared)'}"
+             for key, v in values.items()]
+    print(f"Saved to {config.ENV_FILE}: {', '.join(shown)}")
+    if a.api_key:
+        print(FREE_TIER_NOTE)
+    print("Next: claude-tele-connect status")
     return 0
 
 
@@ -289,6 +253,32 @@ def main(argv=None) -> int:
     s.add_argument("--gcp-project", help="Google Cloud project (Vertex AI) instead of an API key")
     s.add_argument("--owner", help="your name, as the AI should say it")
     s.add_argument("--country-code", help="country code for numbers saved without one, e.g. 91")
+    s.add_argument("--pronouns", help="optional, e.g. she/her (empty: the AI uses your name only)")
+    s.add_argument("--stt", help="pipeline: speech-to-text service")
+    s.add_argument("--llm", help="pipeline: LLM service")
+    s.add_argument("--tts", help="pipeline: text-to-speech service")
+    s.add_argument("--audio", choices=("phone", "bluetooth"), help="audio mode (check --json finds it)")
+
+    st = sub.add_parser("status", help="what's set up, what's missing, and the next step")
+    st.add_argument("--json", action="store_true")
+
+    ky = sub.add_parser("key", help="paste API keys into a local browser form (never through chat)")
+    ky.add_argument("names", nargs="*", help="which keys, e.g. gemini, openai, xai, elevenlabs, deepgram, anthropic, "
+                                             "groq (default: the ones the current AI voice needs)")
+    ky.add_argument("--all", action="store_true", help="ask again even for keys that are already saved")
+    ky.add_argument("--stdin", action="store_true", help="read the keys from stdin, one per line (for scripts)")
+    ky.add_argument("--no-browser", action="store_true", help="only print the form's address")
+    ky.add_argument("--timeout", type=float, default=600, help="seconds to wait for the form (default 600)")
+
+    ph = sub.add_parser("phone", help="connect the phone: pair / connect over Wi-Fi, or show status")
+    ph.add_argument("action", choices=("pair", "connect", "status"))
+    ph.add_argument("address", nargs="?", help="ip:port from the phone's Wireless debugging screen")
+    ph.add_argument("code", nargs="?", help="pair: the 6-digit pairing code")
+    ph.add_argument("--json", action="store_true")
+
+    tv = sub.add_parser("test-voice", help="short live test of the AI voice (no phone call)")
+    tv.add_argument("--provider", choices=tuple(voice.PROVIDERS))
+    tv.add_argument("--json", action="store_true")
 
     def audio_args(sp):
         sp.add_argument("--provider", choices=tuple(voice.PROVIDERS), default=None,
@@ -304,6 +294,7 @@ def main(argv=None) -> int:
 
     c = sub.add_parser("check", help="check the setup and which audio mode your phone needs")
     audio_args(c)
+    c.add_argument("--json", action="store_true", help="machine-readable result; also saves the audio mode")
 
     l = sub.add_parser("lookup", help="find a contact's number on the phone")
     l.add_argument("name")
@@ -328,6 +319,18 @@ def main(argv=None) -> int:
     try:
         if a.cmd == "setup":
             return setup(a)
+        if a.cmd in ("status", "key", "phone", "test-voice"):
+            from . import setupcmds
+            if a.cmd == "status":
+                st = setupcmds.status()
+                print(json.dumps(st, ensure_ascii=False)) if a.json else setupcmds.print_status(st)
+                return 0 if st["ready"] else 1
+            return {"key": setupcmds.cmd_key, "phone": setupcmds.cmd_phone,
+                    "test-voice": setupcmds.cmd_test_voice}[a.cmd](a)
+        if a.cmd == "check" and a.json:
+            from . import setupcmds
+            apply_pipeline_flags(a)
+            return setupcmds.check_json(a)
         if a.cmd == "check":
             return check(a)
         if a.cmd == "lookup":

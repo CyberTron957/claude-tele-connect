@@ -59,3 +59,42 @@ if __name__ == "__main__":
     test_you()
     test_voice_openai_without_test()
     test_choose_accepts_names()
+
+
+# ------------------------------------------------------------------ agent-friendly setup commands
+
+def test_agent_commands():
+    import io
+    import json
+    from contextlib import redirect_stdout
+    from claude_tele_connect import cli
+    def call(*args, stdin=""):
+        sys.stdin = io.StringIO(stdin)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = cli.main(list(args))
+        return code, buf.getvalue()
+
+    # options save only what's given: setting the owner must not reset the provider
+    call("setup", "--provider", "openai")
+    call("setup", "--owner", "Ana")
+    assert os.environ["CLAUDE_TELE_CONNECT_PROVIDER"] == "openai" and config.OWNER_NAME == "Ana"
+    # keys from stdin are saved and never printed
+    code, out = call("key", "openai", "--stdin", stdin="sk-secret-xyz\n")
+    assert code == 0 and "sk-secret-xyz" not in out and config.OPENAI_API_KEY == "sk-secret-xyz", out
+    code, out = call("setup", "--api-key", "AIza-secret")
+    assert "AIza-secret" not in out and "(hidden)" in out, out
+    # status names the next step
+    from claude_tele_connect import setupcmds
+    st = {"you": {"done": True}, "voice": {"chosen": True, "done": False, "missing_keys": ["XAI_API_KEY"], "problems": []},
+          "adb": {"done": True}, "phone": {"done": True}, "audio": {"confirmed": False}}
+    assert setupcmds.next_step(st)["step"] == "keys"
+    st["voice"].update(missing_keys=[], done=True)
+    assert setupcmds.next_step(st)["step"] == "check"
+    st["audio"]["confirmed"] = True
+    assert setupcmds.next_step(st)["step"] == "done"
+    assert setupcmds.resolve_key_names(["grok", "ElevenLabs"]) == ["XAI_API_KEY", "ELEVENLABS_API_KEY"]
+    print("ok  agent setup commands (setup options, key --stdin, status next step)")
+
+
+test_agent_commands()
