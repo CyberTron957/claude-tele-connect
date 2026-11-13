@@ -30,6 +30,10 @@ FREE_TIER_NOTE = ("Gemini's free tier costs nothing (with rate limits). On the f
 
 
 def setup(a) -> int:
+    flags = (a.provider, a.api_key, a.openai_api_key, a.gcp_project, a.owner, a.country_code)
+    if a.step or (sys.stdin.isatty() and all(f is None for f in flags)):
+        from . import onboard
+        return onboard.wizard(a.step or "")
     values = {}
     interactive = sys.stdin.isatty()
     provider = a.provider
@@ -275,7 +279,10 @@ def main(argv=None) -> int:
     p.add_argument("--version", action="version", version=f"claude-tele-connect {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    s = sub.add_parser("setup", help="choose the AI voice, save its key and your name")
+    s = sub.add_parser("setup", help="step-by-step setup: AI voice, your name, phone connection, check, test call",
+                       description="Without options: an interactive step-by-step setup. With options: save "
+                                   "those settings without asking (for scripts).")
+    s.add_argument("--step", choices=("you", "voice", "phone", "check", "call"), help="run only this setup step")
     s.add_argument("--provider", choices=tuple(voice.PROVIDERS), help="AI voice provider (default: ask; gemini is free)")
     s.add_argument("--api-key", help="Gemini API key from Google AI Studio")
     s.add_argument("--openai-api-key", help="OpenAI API key")

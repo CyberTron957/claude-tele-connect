@@ -108,14 +108,30 @@ pipx install git+https://github.com/CyberTron957/claude-tele-connect
 
 ## Set up
 
-### 1. AI voice and your name
-
 ```
 claude-tele-connect setup
 ```
 
-This asks which voice provider to use (Gemini is free), its API key (hidden input), the name the AI should
-say it's calling for, and your country code, and saves them in `~/.claude-tele-connect/.env`.
+A step-by-step wizard does everything below with you, and you can stop it any time (finished steps are saved):
+
+1. **About you**: the name the AI says it's calling for, optional pronouns, your country code.
+2. **AI voice**: pick a provider (Gemini is free), enter its key (hidden), install any extra packages,
+   and hear a quick voice test.
+3. **Connect your phone**: installs adb if needed, then walks you through USB or Wi-Fi pairing (you type
+   the pairing code shown on the phone).
+4. **Phone check**: finds out whether your phone works over adb alone or needs Bluetooth.
+5. **Test call** (optional) to a number you control.
+
+Rerun one step with `claude-tele-connect setup --step you|voice|phone|check|call`. Settings live in
+`~/.claude-tele-connect/.env`. For scripts, `setup --provider ... --api-key ... --owner ...` saves settings
+without asking.
+
+The sections below explain the same steps by hand.
+
+### 1. AI voice and your name
+
+Run `claude-tele-connect setup --step voice` and `--step you`, or set the values in `~/.claude-tele-connect/.env`
+(see [Settings](#usage)).
 
 ### 2. Turn on developer options (phone)
 
@@ -271,6 +287,7 @@ git clone https://github.com/CyberTron957/claude-tele-connect && cd claude-tele-
 pip install -e .
 python tests/test_bluetooth.py        # resampler and Bluetooth bridge logic, no hardware
 python tests/test_voice.py            # voice providers (fake OpenAI server) and a simulated call
+python tests/test_onboard.py          # setup wizard steps with scripted answers
 python tests/pipecat_call_check.py    # a simulated call through a real Pipecat pipeline (macOS, needs services)
 tests/linux_audio_test.sh             # Linux Bluetooth audio path in Docker, with virtual devices
 ```

@@ -42,18 +42,23 @@ Run `adb version`. If it is missing:
 - Debian/Ubuntu: `sudo apt install adb` (ask before using sudo)
 - Windows: `winget install --id=Google.PlatformTools -e`; if that fails, same download link as above
 
-## 3. AI voice, its key, and the user's name
+## 3. The setup wizard (the user runs it)
 
-Run `claude-tele-connect check`. If the AI voice or the owner name is not set, tell the user to run
-this themselves in their terminal (in Claude Code, typing `! claude-tele-connect setup`
-runs it in this session):
+Once the tool and adb are installed, the quickest path is the interactive wizard, which the user runs
+themselves because it asks for keys with hidden input and for the phone's pairing code. In Claude Code,
+typing `! claude-tele-connect setup` runs it in this session:
 
 ```
 claude-tele-connect setup
 ```
 
-It asks which voice provider to use, that provider's API key (hidden input), the name the AI should say it
-calls for, and the country code. Explain the choice briefly if the user asks:
+It walks through: name, AI voice provider and key (with a live voice test), connecting the phone over
+USB or Wi-Fi (including `adb pair`), the phone check, and an optional test call. Steps can be rerun with
+`--step you|voice|phone|check|call`. After it finishes, run `claude-tele-connect check` yourself to confirm,
+and skip ahead to the steps below that it didn't complete.
+
+If the user would rather you guide them, follow steps 4 to 6 instead; the voice and name still need
+`claude-tele-connect setup --step voice` and `--step you` in their terminal. Explain the provider choice briefly if the user asks:
 
 - **Gemini** (default): free. A free key from https://aistudio.google.com/apikey is enough; the free
   tier has rate limits, and Google may use what is said on free-tier calls to improve its products

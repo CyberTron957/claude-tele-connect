@@ -122,7 +122,8 @@ def _silence_pipecat_logs():
     try:
         from loguru import logger
         logger.remove()
-        level = os.environ.get("CLAUDE_TELE_CONNECT_PIPECAT_LOG", "ERROR")
+        # Pipecat's own log stays quiet: problems reach the call as events. Set this to e.g. DEBUG to see it.
+        level = os.environ.get("CLAUDE_TELE_CONNECT_PIPECAT_LOG", "CRITICAL")
         import sys
         logger.add(sys.stderr, level=level)
     except Exception:
@@ -143,6 +144,10 @@ def build(kind: str, spec: str, instructions: str = ""):
     if name == "vertex":
         # Gemini text models are served from the global endpoint; CLAUDE_TELE_CONNECT_LLM_LOCATION overrides.
         kw.update(project_id=config.GCP_PROJECT, location=os.environ.get("CLAUDE_TELE_CONNECT_LLM_LOCATION", "global"))
+    if name in ("google", "vertex"):
+        # The first Gemini request on a new connection is sometimes very slow: re-send it after 8 s instead of
+        # waiting out Pipecat's 20 s stream timeout.
+        kw.update(retry_on_timeout=True, retry_timeout_secs=8.0)
     S = getattr(cls, "Settings", None)
     fields = {f.name for f in dataclasses.fields(S)} if S and dataclasses.is_dataclass(S) else set()
     s = {}
