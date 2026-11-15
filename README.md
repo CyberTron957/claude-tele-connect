@@ -18,8 +18,7 @@ Install claude-tele-connect (https://github.com/CyberTron957/claude-tele-connect
 calls from my Android phone, and set it up for me.
 
 1. If `claude-tele-connect --version` fails, install it: `uv tool install git+https://github.com/CyberTron957/claude-tele-connect`
-   (or `pipx install git+...`; if neither exists, install uv first). If it asks for credentials, tell me to
-   run `gh auth login`.
+   (or `pipx install git+...`; if neither exists, install uv first).
 2. Run `claude-tele-connect guide setup` and follow it until `claude-tele-connect status` says ready.
    Tell me what I need to do on my phone. Never ask me to paste an API key in the chat; use the local key
    form the guide describes.

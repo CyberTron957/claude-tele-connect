@@ -12,7 +12,6 @@ The full instructions ship inside the tool, so they always match the installed v
    - `pipx install git+https://github.com/CyberTron957/claude-tele-connect`
    - neither exists: install `uv` first (macOS/Linux: `brew install uv` or
      `curl -LsSf https://astral.sh/uv/install.sh | sh`; Windows: `winget install --id=astral-sh.uv -e`), then the first line.
-   Say what you are about to install before running a download-and-run installer. If the repository is not
-   found or asks for credentials, it is private: tell the user to run `gh auth login`, and stop. If the command
-   is still not found afterwards, run `uv tool update-shell` (or `pipx ensurepath`) and use the full path.
+   Say what you are about to install before running a download-and-run installer. If the command is still
+   not found afterwards, run `uv tool update-shell` (or `pipx ensurepath`) and use the full path.
 2. Run `claude-tele-connect guide setup` and follow what it prints. Never ask for an API key in the chat.
