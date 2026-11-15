@@ -15,16 +15,22 @@ If `ready` is false, follow `claude-tele-connect guide setup` to fix what `next`
 the phone, or to paste a key into the form `claude-tele-connect key` opens). Never ask the user to paste an
 API key into the chat.
 
-## 2. Confirm the exact call with the user (required, every call)
+## 2. Make sure the user asked for this call (ask only when needed)
 
-Calls go out from the user's personal number to real people, so nothing is dialed until the user has
-approved this specific call in the conversation.
+Calls go out from the user's personal number to real people, so only dial a call the user asked for. Don't
+ask for confirmation just to be safe: when the request is specific, it is the approval.
 
 1. Work out who to call. For a contact name, run `claude-tele-connect lookup "<name>" --json` and use the number it
-   returns. If there are several matches or none, ask the user which number to use.
-2. Show the user, in one short message: who (name and number), the goal, the facts the AI will use,
-   and the language if it is not English. Ask "Shall I place this call?"
-3. Only a clear yes to that message counts. A yes to an earlier, different call does not.
+   returns.
+2. **Just place the call** (say in one line who you're calling and the goal as you go) when the user's request
+   names who to call (a number they gave, or a contact that matches exactly one number) and what the call
+   should achieve, and you have the facts the call needs.
+3. **Ask once, in one short message**, only when something is unclear: several contact matches or none, a goal
+   or fact the call needs is missing, the number came from your own web search rather than from the user, or
+   the call would commit the user to money, a purchase or a booking they haven't described. Put every open
+   question in that one message, and don't ask again after the answer.
+4. If the user has said not to ask before calls, never ask, beyond the exceptions in 3 about money and
+   unclear numbers.
 
 Refuse, and say why, if the request is: an emergency number (tell the user to call emergency services
 themselves; the tool also blocks these), cold calling or marketing, calling many numbers in a row,
@@ -51,7 +57,7 @@ the call.
 claude-tele-connect call "<number or contact>" --goal "<goal>" --context "<facts>" --yes --json
 ```
 
-- `--yes` skips the terminal prompt. Use it only after the user approved the call in step 2.
+- `--yes` skips the terminal prompt. Use it when step 2 is satisfied.
 - Calls last up to `--max-minutes` (default 5) plus ringing, so give the command a long timeout
   (10 minutes) or run it in the background and wait for it to finish. Don't start a second call
   while one is running.

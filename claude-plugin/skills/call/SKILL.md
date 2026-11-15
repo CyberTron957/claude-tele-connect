@@ -8,5 +8,5 @@ description: Place a real phone call from the user's own Android phone and numbe
 Run `claude-tele-connect --version`; if it is missing, use the **setup** skill first. Then run
 `claude-tele-connect guide call` and follow what it prints.
 
-The one rule that never bends: nothing is dialed until the user has approved this specific call (who, goal,
-facts shared) in the conversation. Never ask for an API key in the chat.
+Only dial calls the user asked for. A specific request (who to call, what for) is the approval; ask once only
+if something is unclear. Never ask for an API key in the chat.

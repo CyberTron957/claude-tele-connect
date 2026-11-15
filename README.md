@@ -23,15 +23,14 @@ calls from my Android phone, and set it up for me.
 2. Run `claude-tele-connect guide setup` and follow it until `claude-tele-connect status` says ready.
    Tell me what I need to do on my phone. Never ask me to paste an API key in the chat; use the local key
    form the guide describes.
-3. Then run `claude-tele-connect guide call` and follow it for every call: always show me the number and
-   goal and wait for my OK before dialing.
+3. Then run `claude-tele-connect guide call` and follow it whenever I ask you to call someone.
 ```
 
 The agent installs the tool and adb, picks the AI voice with you (Gemini has a free tier), and connects and
 checks your phone. You only tap a few things on the phone (turn on USB or Wireless debugging), paste your API
 key into a form that opens in your browser, and say yes to a test call. After that, just ask: *"call the
-salon and move my haircut to Saturday"*. The agent confirms the call with you, places it, and tells you what
-was agreed.
+salon and move my haircut to Saturday"*. The agent places the call and tells you what
+was agreed; it only asks first if something is unclear (several matching contacts, missing details).
 
 In Claude Code you can instead add the plugin once and say **"set up phone calling"**:
 
@@ -221,8 +220,8 @@ claude-tele-connect call "<contact name or number>" --goal "Say hello, explain t
 
 ## Use it from an agent
 
-`claude-tele-connect guide call` prints the rules an agent follows: look up the contact, show you the
-number, goal and details, wait for your OK before every call, then read the transcript and tell you the
+`claude-tele-connect guide call` prints the rules an agent follows: look up the contact, call when your request is
+specific (asking once only if something is unclear), then read the transcript and tell you the
 outcome. In Claude Code the plugin's `call` skill does this for you (or copy `claude-plugin/skills/` into
 `~/.claude/skills/`). Any other agent can run `claude-tele-connect call ... --yes --json` for the result and
 transcript as JSON.
