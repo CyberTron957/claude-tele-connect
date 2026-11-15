@@ -103,7 +103,7 @@ test_agent_commands()
 def test_guides_ship_with_the_tool():
     import contextlib, io
     from claude_tele_connect import cli
-    for topic, needle in (("setup", "status --json"), ("call", "ask once")):
+    for topic, needle in (("setup", "status --json"), ("call", "Ask once")):
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
             assert cli.main(["guide", topic]) == 0
